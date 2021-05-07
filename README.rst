@@ -12,7 +12,7 @@ NLDI Flow Tools
 NLDI Flow Tools pulls from the NHD to delineate water flow paths and drainage basins from a lon, lat point.
 
 * Free software: 3-clause BSD license
-* Documentation: (COMING SOON!) 
+* Documentation: https://acwi-sswdnldi-flowtools.readthedocs.io/
 
 Install
 ------

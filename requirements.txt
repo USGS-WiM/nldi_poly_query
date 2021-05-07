@@ -1,0 +1,9 @@
+# List required packages in this file, one per line.
+
+rasterio
+pyproj
+geojson
+numpy
+pyflwdir
+requests
+shapely

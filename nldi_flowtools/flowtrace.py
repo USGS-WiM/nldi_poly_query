@@ -3,6 +3,7 @@ from .utils import geom_to_geojson, get_local_catchment, get_local_flowlines, ge
     split_flowline
 import geojson
 # from nldi_flowtools.utils
+# import geopandas
 
 
 class Flowtrace:

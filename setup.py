@@ -50,7 +50,7 @@ setup(
     name='nldi_flowtools',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="NLDI Flow Tools pulls from the NHD to delineate water flow paths and drainage basins from a lat, lon point.",
+    description="NLDI Flow Tools pulls from the NHD to delineate water flow paths and drainage basins from a lon, lat point.",
     long_description=readme,
     long_description_content_type='text/markdown',
     author="USGS",

@@ -16,7 +16,7 @@ NLDI Flow Tools pulls from the NHD to delineate water flow paths and drainage ba
 
 Install
 ------
-* conda create -n env_name python=3.8 gdal rasterio proj=6.2.1
+* conda create -n env_name -c conda-forge python=3.8 gdal rasterio proj=6.2.1
 * conda activate env_name
 * pip install git+https://github.com/ACWI-SSWD/nldi_flowtools.git
 

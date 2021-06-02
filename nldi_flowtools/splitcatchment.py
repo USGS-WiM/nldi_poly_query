@@ -42,16 +42,19 @@ class SplitCatchment:
         self.run()
 
     def serialize(self):
+        # If upstream == False, only return the local catchment and the splitcatchment geometries
         if self.upstream is False:
             feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
             feature2 = geojson.Feature(geometry=self.splitCatchment, id='splitCatchment')
             featurecollection = geojson.FeatureCollection([feature1, feature2])
 
+        # If upstream == True and the clickpoint is on a NHD FLowline, return the local catchment and the merged catchment (splitcatchment merged with all upstream basins)
         if self.upstream is True and self.onFlowline is True:
             feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
             feature2 = geojson.Feature(geometry=self.mergedCatchment, id='mergedCatchment')
             featurecollection = geojson.FeatureCollection([feature1, feature2])
 
+        # If upstream == True and the clickpoint is NOT on a NHD FLowline, return the local catchment and splitcatchment 
         if self.upstream is True and self.onFlowline is False:
             feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
             feature2 = geojson.Feature(geometry=self.splitCatchment, id='splitCatchment')

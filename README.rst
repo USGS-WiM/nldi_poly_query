@@ -39,6 +39,7 @@ To find the catchment from a lon, lat point, use the splitcatchment() function. 
 This splitcatchment function returns the following response in GeoJson.    
         
 .. image:: https://github.com/ACWI-SSWD/nldi_flowtools/blob/master/docs/images/splitcatchment1.png
+  :width: 400
 
 .. code-block:: python
 
@@ -51,6 +52,7 @@ However, if the input point does not intersect an NHD Flowline, or if 'upstream'
     splitcatchment(-93.02933761928982, 41.79037842455216, False)
     
 .. image:: https://github.com/ACWI-SSWD/nldi_flowtools/blob/master/docs/images/splitcatchment2.png
+  :width: 400
 
 .. code_block:: python
 

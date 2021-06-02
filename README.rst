@@ -29,7 +29,7 @@ Features
 Useage
 ------
 
-*Split Catchment
+# Split Catchment
 
 To find the catchment from a lon, lat point, use the splitcatchment() function. The first two inputs are the inputs are the longitude and latitude coordinates passed in as floats. The third input is the 'upstream' variable, which is passed as a boolean. If this is set to True, and the input point lands on an NHD Flowline, then the function will return both the local catchment geometry, and the 'mergedcatchment' geometry (the splitcatchment merged with all upstream catchments).
 

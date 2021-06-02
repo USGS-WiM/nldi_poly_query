@@ -38,7 +38,7 @@ To find the catchment from a lon, lat point, use the splitcatchment() function. 
     
 This splitcatchment function returns the following response in GeoJson.    
         
-![Image of splitcatchment](https://octodex.github.com/images/yaktocat.png) 
+.. image:: https://octodex.github.com/images/yaktocat.png) 
 
 However, if the input point does not intersect an NHD Flowline, or if 'upstream' is set to False, then the local catchment and the splitcatchment geometries will be returned.
 

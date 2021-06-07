@@ -14,7 +14,6 @@ import math
 # arguments
 NLDI_URL = 'https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/'
 NLDI_GEOSERVER_URL = 'https://labs.waterdata.usgs.gov/geoserver/wmadata/ows'
-NHD_FLOWLINES_URL = 'https://labs.waterdata.usgs.gov/geoserver/wmadata/ows?service=wfs&version=1.0.0&request=GetFeature&typeName=wmadata%3Anhdflowline_network&maxFeatures=500&outputFormat=application%2Fjson&srsName=EPSG%3A4326&CQL_FILTER=comid%3D'
 IN_FDR_COG = '/vsicurl/https://prod-is-usgs-sb-prod-publish.s3.amazonaws.com/5fe0d98dd34e30b9123eedb0/fdr.tif'
 
 
@@ -90,7 +89,6 @@ def get_local_flowlines(catchmentIdentifier):
     # request  flowline geometry from point in polygon query from NLDI geoserver
     r = requests.get(NLDI_GEOSERVER_URL, params=payload)
 
-    # print('request url: ', r.url)
     flowlines = r.json()
 
     print('got local flowlines')
@@ -99,7 +97,6 @@ def get_local_flowlines(catchmentIdentifier):
     nhdGeom = flowlines['features'][0]['geometry']
     nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
     nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
-    # print('nhdFlowline: ', nhdFlowline)
 
     return flowlines, nhdFlowline
 # return flowlines, nhdFlowline
@@ -116,7 +113,6 @@ def get_total_basin(catchmentIdentifier, catchment):
     # request upstream basin from NLDI using comid of catchment point is in
     r = requests.get(NLDI_URL + catchmentIdentifier + '/basin', params=payload)
 
-    # print('upstream basin', r.text)
     resp = r.json()
 
     # convert geojson to ogr geom
@@ -324,8 +320,7 @@ def get_onFlowline(projected_xy, flowlines, transformToRaster, transformToWGS84)
 
 def get_raindropPath(flw, projected_xy, nhdFlowline, flowlines, transformToRaster, transformToWGS84):
 
-    # Convert the flowlines to a geopandas dataframe
-
+    # Convert the flowlines to a linestring
     linestringlist = []
     for pair in flowlines['features'][0]['geometry']['coordinates'][0]:
         linestringlist.append((pair[0], pair[1]))
@@ -478,7 +473,6 @@ def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
         buffDist = intersectionPoint.distance(nhdFlowline) * 1.01
         buffIntersectionPoint = intersectionPoint.buffer(buffDist)
         NHDFlowlinesCut = split(nhdFlowline, buffIntersectionPoint)
-        # print('NHDFlowlinesCut: ', len(NHDFlowlinesCut), NHDFlowlinesCut)
 
     # If the NHD Flowline was split, then calculate measure
     try:
@@ -524,7 +518,6 @@ def split_flowline(intersectionPoint, flowlines):
         buffDist = intersectionPoint.distance(nhdFlowline) * 1.01
         buffIntersectionPoint = intersectionPoint.buffer(buffDist)
         NHDFlowlinesCut = split(nhdFlowline, buffIntersectionPoint)
-        # print('NHDFlowlinesCut: ', len(NHDFlowlinesCut), NHDFlowlinesCut)
 
     # If the NHD Flowline was split, then calculate measure
     try:
@@ -566,3 +559,4 @@ def merge_downstreamPath(raindropPath, downstreamFlowline):
     downstreamPath = LineString([i for sublist in outcoords for i in sublist])
     return downstreamPath
 # return downstreamPath
+

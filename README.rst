@@ -64,7 +64,11 @@ Flowtrace Tool
 
 The Flowtrace function traces the raindrop path from the input point to the NHD Flowline which it drains to. Depending on the inputs, this function can return the raindrop path from the input point to the flowline, and will always return either a portion or the entire NHD flowline. The function requires four input parameters. Like splitcatchment(), the first two inputs of flowtrace() are the longitude/latitude coordinates which are passed as floats. The third input is a boolean variable called raindropTrace, which if set as True, will ensure that the flowpath geometry will be returned, and if False will withhold the flowpath geometry. The fourth parameter is called 'direction' and is passed as a string. When flowtrace is run, it splits the NHD Flowline at the intersection point where the raindrop path flows into the NHD Flowline. If direction is set to 'up', then the upstream portion of the NHD Flowline will be returned. Likewise, if direction is set to 'down', the downstream portion will be returned. If direction is set as 'none', then the entire NHD Flowline will be returned.
 
-.. code_block: python
+Another feature of this function is that several important NHD Flowline properties get returned with the flowline geometry. Those include the comid, stream name and reachcode of the NHD Flowline, the lat, lng coordinates of the intersection point, the measure of the intersection point and the length in meters of the raindropPath. These properties are returned with the flowline geometry since the raindropPath geometry is an optional return.
+
+Here is an example of flotrace returning a raindropPath and downstreamFlowline geometries.
+
+.. code_block:: python
     
     from nldi_flowtools import *
     flowtrace(-93.17298889291125, 41.99318001025908, True, 'down')
@@ -76,7 +80,10 @@ The Flowtrace function traces the raindrop path from the input point to the NHD 
 
     {"features": [{"geometry": {"coordinates": [[-93.1793, 41.9855], [-93.1791, 41.9851], [-93.1791, 41.9848], [-93.179, 41.9845], [-93.179, 41.9832]], "type": "LineString"}, "id": "downstreamFlowline", "properties": {"comid": 6994901, "gnis_name": "none", "intersectionPoint": [41.9855, -93.1793], "measure": 14.8, "raindropPathDist": 1159.24, "reachcode": "07080106000893"}, "type": "Feature"}, {"geometry": {"coordinates": [[-93.172936, 41.99328], [-93.172947, 41.993012], [-93.172958, 41.992744], [-93.173333, 41.992483], [-93.173344, 41.992215], [-93.173719, 41.991955], [-93.17373, 41.991687], [-93.174105, 41.991427], [-93.174116, 41.991159], [-93.174491, 41.990899], [-93.174502, 41.990631], [-93.174513, 41.990363], [-93.174888, 41.990103], [-93.175264, 41.989843], [-93.175628, 41.989851], [-93.176003, 41.989591], [-93.176368, 41.989598], [-93.176743, 41.989338], [-93.177119, 41.989078], [-93.177494, 41.988818], [-93.177869, 41.988558], [-93.177515, 41.988282], [-93.177526, 41.988014], [-93.177537, 41.987746], [-93.177548, 41.987478], [-93.177559, 41.98721], [-93.17757, 41.986942], [-93.177945, 41.986682], [-93.17832, 41.986422], [-93.178695, 41.986161], [-93.179071, 41.985901], [-93.179446, 41.985641], [-93.1793, 41.9855]], "type": "LineString"}, "id": "raindropPath", "properties": {}, "type": "Feature"}], "type": "FeatureCollection"}
 
-.. code_block: python
+
+Here is a delineate from the same point, but with the raindropTrace parameter set to False. Notice, that only the downstreamFlowline geometry is returned, and not the raindropPath.
+
+.. code_block:: python
     
     from nldi_flowtools import *
     flowtrace(-93.17298889291125, 41.99318001025908, False, 'down')
@@ -88,7 +95,10 @@ The Flowtrace function traces the raindrop path from the input point to the NHD 
 
     {"features": [{"geometry": {"coordinates": [[-93.1793, 41.9855], [-93.1791, 41.9851], [-93.1791, 41.9848], [-93.179, 41.9845], [-93.179, 41.9832]], "type": "LineString"}, "id": "downstreamFlowline", "properties": {"comid": 6994901, "gnis_name": "none", "intersectionPoint": [41.9855, -93.1793], "measure": 14.8, "reachcode": "07080106000893"}, "type": "Feature"}], "type": "FeatureCollection"}
     
-.. code_block: python
+    
+This last example shows a delineation from the same point, but with the raindropPath and the upstreamFlowline geometries returned. geomtry
+    
+.. code_block:: python
     
     from nldi_flowtools import *
     flowtrace(-93.17298889291125, 41.99318001025908, True, 'up')

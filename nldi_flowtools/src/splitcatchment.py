@@ -42,6 +42,8 @@ class SplitCatchment:
         self.run()
 
     def serialize(self):
+
+        print('Splitcatment variable, self.upstream: ', self.upstream)
         # If upstream == False, only return the local catchment and the splitcatchment geometries
         if self.upstream is False:
             feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
@@ -72,7 +74,7 @@ class SplitCatchment:
         self.transformToRaster, self.transformToWGS84 = get_coordsys()
         self.projected_xy = project_point(self.x, self.y, self.transformToRaster)
         self.splitCatchmentGeom = split_catchment(self.catchmentGeom, self.projected_xy, self.transformToRaster, self.transformToWGS84)
-        self.onFlowline = get_onFlowline(self.projected_xy, self.flowlines, self.transformToRaster, self.transformToWGS84)
+        self.onFlowline = get_onFlowline(self.projected_xy, self.flowlines, self.transformToRaster)
         self.catchment = geom_to_geojson(self.catchmentGeom)
 
         # outputs

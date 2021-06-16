@@ -54,6 +54,7 @@ class Flowtrace:
         self.run()
 
     def serialize(self):
+        print('Flowtrace variables, self.raindropTrace:', self.raindropTrace)
 
         if self.onFlowline is True:
             if self.direction == 'up':
@@ -108,8 +109,8 @@ class Flowtrace:
         self.flowlines, self.nhdFlowlineGeom = get_local_flowlines(self.catchmentIdentifier)
         self.transformToRaster, self.transformToWGS84 = get_coordsys()
         self.projected_xy = project_point(self.x, self.y, self.transformToRaster)
-        self.flw, self.flwdir_transform = get_flowgrid(self.catchmentGeom, self.transformToRaster, self.transformToWGS84)
-        self.onFlowline = get_onFlowline(self.projected_xy, self.flowlines, self.transformToRaster, self.transformToWGS84)
+        self.flw, self.flwdir_transform = get_flowgrid(self.catchmentGeom, self.transformToRaster)
+        self.onFlowline = get_onFlowline(self.projected_xy, self.flowlines, self.transformToRaster)
         self.catchment = geom_to_geojson(self.catchmentGeom)
 
         if self.onFlowline is True:

@@ -204,7 +204,7 @@ def project_point(x, y, transformToRaster):
 # return  projected_xy
 
 
-def get_flowgrid(catchment_geom, transformToRaster, transformToWGS84):
+def get_flowgrid(catchment_geom, transformToRaster):
     """Use a 90 meter buffer of the local catchment to clip NHD Plus v2 flow direction raster"""
 
     print('start clip raster')
@@ -242,6 +242,11 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
     print('start split catchment...')
 
     with rasterio.open(IN_FDR_COG, 'r') as ds:
+        profile = ds.profile
+
+        # print fdr value at click point
+        for val in ds.sample([projected_xy]): 
+            print('FDR Value at Click Point:', val)
 
         # get raster crs
         dest_crs = ds.crs
@@ -266,10 +271,11 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
     flw = pyflwdir.from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
 
     # used for snapping click point
-    # stream_order = flw.stream_order()
+    stream_order = flw.stream_order()
+    print('Calculated Stream Order')
 
     # delineate subbasins
-    subbasins = flw.basins(xy=projected_xy)   # streams=stream_order>4
+    subbasins = flw.basins(xy=projected_xy, streams=stream_order>1)   # streams=stream_order>4
 
     # convert subbasins from uint32
     subbasins = subbasins.astype(np.int32)
@@ -289,7 +295,7 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
 # return split_geom
 
 
-def get_onFlowline(projected_xy, flowlines, transformToRaster, transformToWGS84):
+def get_onFlowline(projected_xy, flowlines, transformToRaster):
     """Determine if x,y is on a NHD Flowline (within 15m)"""
 
     linestringlist = []

@@ -63,13 +63,7 @@ setup(
     url="https://github.com/Anders-Hopkins/nldi_flowtools",
     python_requires=">={}".format(".".join(str(n) for n in min_version)),
     packages=find_packages(
-        include=[
-            "nldi_flowtools",
-            "nldi_flowtools.*",
-            "pygeoapi_plugins",
-            "pygeoapi_plugins.*",
-        ],
-        exclude=["docs", "tests"],
+        include=["nldi_flowtools", "nldi_flowtools.*"], exclude=["docs", "tests"],
     ),
     entry_points={
         "console_scripts": [

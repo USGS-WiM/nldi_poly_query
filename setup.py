@@ -1,6 +1,9 @@
-from os import path
-from setuptools import setup, find_packages
 import sys
+from os import path
+
+from setuptools import find_packages
+from setuptools import setup
+
 import versioneer
 
 
@@ -19,13 +22,15 @@ This may be due to an out-of-date pip. Make sure you have pip >= 9.0.1.
 Upgrade pip like so:
 
 pip install --upgrade pip
-""".format(*(sys.version_info[:2] + min_version))
+""".format(
+        *(sys.version_info[:2] + min_version)
+    )
     sys.exit(error)
 
 here = path.abspath(path.dirname(__file__))
 
 
-with open(path.join(here, 'README.rst'), encoding='utf-8') as readme_file:
+with open(path.join(here, "README.rst"), encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 # with open(path.join(here, 'requirements.txt')) as requirements_file:
@@ -35,48 +40,55 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as readme_file:
 
 
 requirements = [
-    'geojson',
-    'numpy',
-    'pyflwdir',
-    'requests',
-    'shapely',
-    'pyproj',
-    'gdal',
-    'rasterio'
+    "geojson",
+    "numpy",
+    "pyflwdir",
+    "requests",
+    "shapely",
+    "pyproj",
+    "gdal",
+    "rasterio",
 ]
 
 
 setup(
-    name='nldi_flowtools',
+    name="nldi_flowtools",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="NLDI Flow Tools pulls from the NHD to delineate water flow paths and drainage basins from a lon, lat point.",
     long_description=readme,
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     author="USGS",
-    author_email='ahopkins@contractor.usgs.gov',
-    url='https://github.com/Anders-Hopkins/nldi_flowtools',
-    python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
-    packages=find_packages(include=['nldi_flowtools', 'nldi_flowtools.*'], exclude=['docs', 'tests']),
+    author_email="ahopkins@contractor.usgs.gov",
+    url="https://github.com/Anders-Hopkins/nldi_flowtools",
+    python_requires=">={}".format(".".join(str(n) for n in min_version)),
+    packages=find_packages(
+        include=[
+            "nldi_flowtools",
+            "nldi_flowtools.*",
+            "pygeoapi_plugins",
+            "pygeoapi_plugins.*",
+        ],
+        exclude=["docs", "tests"],
+    ),
     entry_points={
-        'console_scripts': [
+        "console_scripts": [
             # 'command = some.module:some_function',
         ],
     },
     include_package_data=True,
     package_data={
-        'nldi_flowtools': [
+        "nldi_flowtools": [
             # When adding files here, remember to update MANIFEST.in as well,
             # or else they will not be included in the distribution on PyPI!
             # 'path/to/data_file',
-        ]
+        ],
     },
     install_requires=requirements,
     license="BSD (3-clause)",
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
-        'Natural Language :: English',
-        'Programming Language :: Python :: 3',
+        "Development Status :: 2 - Pre-Alpha",
+        "Natural Language :: English",
+        "Programming Language :: Python :: 3",
     ],
-
 )

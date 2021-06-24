@@ -11,5 +11,6 @@ dependencies:
   -pyflwdir
   -requests
   -shapely
+  -pygeoapi
   -pip:
     -pip install git+https://github.com/Anders-Hopkins/nldi_flowtools

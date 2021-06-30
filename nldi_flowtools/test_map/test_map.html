@@ -27,6 +27,7 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
 
 
+
 	<style>
 
         body {
@@ -52,7 +53,7 @@
 
 <script>
 var map;
-var startPoint, border, catchment, splitCatchment, upstreamBasin, mergedCatchment, streamCrossSection;
+var startPoint, border, catchment, splitCatchment, upstreamBasin, mergedCatchment;
 var intersectionPoint, raindropPath, nhdFlowline, upstreamFlowline, downstreamFlowline, downstreamPath;
 var features;
 var layerControl;
@@ -332,6 +333,7 @@ function delineatePoint(e) {
     console.log('payload: ', payload)
 
     startPoint = L.marker([data.lat,data.lng]).addTo(map);   
+    startPoint.bindPopup('<b>Click point: </b>' + '<br>' +data.lng + ', ' + data.lat + '</br>').openPopup();
     
 
     $.ajax({ 

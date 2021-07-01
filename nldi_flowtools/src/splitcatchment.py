@@ -1,7 +1,6 @@
 from .utils import geom_to_geojson, get_local_catchment, get_local_flowlines, get_coordsys, \
     project_point, get_total_basin, split_catchment, get_onFlowline, get_upstream_basin, merge_geometry
 import geojson
-# from nldi_flowtools.utils
 
 
 class SplitCatchment:
@@ -82,12 +81,12 @@ class SplitCatchment:
             self.splitCatchment = geom_to_geojson(self.splitCatchmentGeom)
 
         if self.upstream is True and self.onFlowline is True:
-            self.totalBasinGeom = get_total_basin(self.catchmentIdentifier, self.catchmentGeom)
+            self.totalBasinGeom = get_total_basin(self.catchmentIdentifier)
             self.mergedCatchmentGeom = merge_geometry(self.catchmentGeom, self.splitCatchmentGeom, self.totalBasinGeom)
             self.mergedCatchment = geom_to_geojson(self.mergedCatchmentGeom)
 
         if self.upstream is True and self.onFlowline is False:
             self.splitCatchment = geom_to_geojson(self.splitCatchmentGeom)
-            self.totalBasinGeom = get_total_basin(self.catchmentIdentifier, self.catchmentGeom)
+            self.totalBasinGeom = get_total_basin(self.catchmentIdentifier)
             self.upstreamBasinGeom = get_upstream_basin(self.catchmentGeom, self.totalBasinGeom)
             self.upstreamBasin = geom_to_geojson(self.upstreamBasinGeom)

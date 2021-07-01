@@ -102,7 +102,7 @@ def get_local_flowlines(catchmentIdentifier):
 # return flowlines, nhdFlowline
 
 
-def get_total_basin(catchmentIdentifier, catchment):
+def get_total_basin(catchmentIdentifier):
     """Use local catchment identifier to get local upstream basin geometry from NLDI"""
 
     print('getting upstream basin...')
@@ -118,11 +118,6 @@ def get_total_basin(catchmentIdentifier, catchment):
     # convert geojson to ogr geom
     features = resp['features']
     totalBasinGeom = GeometryCollection([shape(feature["geometry"]).buffer(0) for feature in features])
-
-    # d = 0.00045
-    # cf = 1.3  # cofactor
-
-    # upstreamBasinGeom = totalBasinGeom.symmetric_difference(catchment).buffer(-d).buffer(d*cf).simplify(d)
 
     print('finished getting upstream basin')
     return totalBasinGeom
@@ -290,7 +285,7 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
     # project back to wgs84
     split_geom = transform(transformToWGS84, shape(poly[0]))
 
-    print('finish split catchment...')
+    print('finish split catchment.')
     return split_geom
 # return split_geom
 

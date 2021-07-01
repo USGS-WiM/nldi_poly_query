@@ -1,7 +1,7 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
-from src.nldi_flowtools import flowtrace, splitcatchment
+from .nldi_flowtools import flowtrace, splitcatchment
 from distutils import util
 
 app = Flask(__name__)

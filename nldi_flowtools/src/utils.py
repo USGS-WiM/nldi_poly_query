@@ -102,7 +102,7 @@ def get_local_flowlines(catchmentIdentifier):
 # return flowlines, nhdFlowline
 
 
-def get_total_basin(catchmentIdentifier, catchment):
+def get_total_basin(catchmentIdentifier):
     """Use local catchment identifier to get local upstream basin geometry from NLDI"""
 
     print('getting upstream basin...')
@@ -118,11 +118,6 @@ def get_total_basin(catchmentIdentifier, catchment):
     # convert geojson to ogr geom
     features = resp['features']
     totalBasinGeom = GeometryCollection([shape(feature["geometry"]).buffer(0) for feature in features])
-
-    # d = 0.00045
-    # cf = 1.3  # cofactor
-
-    # upstreamBasinGeom = totalBasinGeom.symmetric_difference(catchment).buffer(-d).buffer(d*cf).simplify(d)
 
     print('finished getting upstream basin')
     return totalBasinGeom
@@ -204,7 +199,7 @@ def project_point(x, y, transformToRaster):
 # return  projected_xy
 
 
-def get_flowgrid(catchment_geom, transformToRaster, transformToWGS84):
+def get_flowgrid(catchment_geom, transformToRaster):
     """Use a 90 meter buffer of the local catchment to clip NHD Plus v2 flow direction raster"""
 
     print('start clip raster')
@@ -242,6 +237,11 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
     print('start split catchment...')
 
     with rasterio.open(IN_FDR_COG, 'r') as ds:
+        profile = ds.profile
+
+        # print fdr value at click point
+        for val in ds.sample([projected_xy]): 
+            print('FDR Value at Click Point:', val)
 
         # get raster crs
         dest_crs = ds.crs
@@ -266,10 +266,11 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
     flw = pyflwdir.from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
 
     # used for snapping click point
-    # stream_order = flw.stream_order()
+    stream_order = flw.stream_order()
+    print('Calculated Stream Order')
 
     # delineate subbasins
-    subbasins = flw.basins(xy=projected_xy)   # streams=stream_order>4
+    subbasins = flw.basins(xy=projected_xy, streams=stream_order>1)   # streams=stream_order>4
 
     # convert subbasins from uint32
     subbasins = subbasins.astype(np.int32)
@@ -284,12 +285,12 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
     # project back to wgs84
     split_geom = transform(transformToWGS84, shape(poly[0]))
 
-    print('finish split catchment...')
+    print('finish split catchment.')
     return split_geom
 # return split_geom
 
 
-def get_onFlowline(projected_xy, flowlines, transformToRaster, transformToWGS84):
+def get_onFlowline(projected_xy, flowlines, transformToRaster):
     """Determine if x,y is on a NHD Flowline (within 15m)"""
 
     linestringlist = []

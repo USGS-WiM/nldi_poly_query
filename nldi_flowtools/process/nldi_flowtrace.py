@@ -2,7 +2,7 @@ import logging
 import time
 from distutils.util import strtobool
 
-from nldi_flowtools.flowtrace import Flowtrace
+from nldi_flowtools.src.flowtrace import Flowtrace
 from pygeoapi.process.base import BaseProcessor
 
 LOGGER = logging.getLogger(__name__)

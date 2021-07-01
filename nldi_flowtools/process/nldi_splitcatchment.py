@@ -2,7 +2,7 @@ import logging
 import time
 from distutils.util import strtobool
 
-from nldi_flowtools.splitcatchment import SplitCatchment
+from nldi_flowtools.src.splitcatchment import SplitCatchment
 from pygeoapi.process.base import BaseProcessor
 
 LOGGER = logging.getLogger(__name__)

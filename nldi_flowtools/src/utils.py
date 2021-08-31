@@ -41,12 +41,6 @@ def get_local_catchment(x, y):
 
     print('requesting local catchment...')
 
-    x1 = x + .006
-    y1 = y + .008
-
-    x2 = x + .002
-    y2 = y + .003
-
     wkt_point = f"POINT({x} {y})" 
     cql_filter = f"INTERSECTS(the_geom, {wkt_point})" 
 
@@ -62,7 +56,7 @@ def get_local_catchment(x, y):
 
     # request catchment geometry from point in polygon query from NLDI geoserver
     r = requests.get(NLDI_GEOSERVER_URL, params=payload)
-    print('request url:', r.url)
+ 
     resp = r.json()
 
     # get catchment id
@@ -80,7 +74,7 @@ def get_local_catchment(x, y):
 def get_local_flowlines(catchmentIdentifier):
     """Request NDH Flowline from NLDI with Catchment ID"""
 
-    cql_filter = "comid=%s" % (catchmentIdentifier)
+    cql_filter = f"comid={catchmentIdentifier}" 
 
     payload = {
         'service': 'wfs',

@@ -41,8 +41,14 @@ def get_local_catchment(x, y):
 
     print('requesting local catchment...')
 
-    wkt_point = "POINT(%f %f)" % (x, y)
-    cql_filter = "INTERSECTS(the_geom, %s)" % (wkt_point)
+    x1 = x + .006
+    y1 = y + .008
+
+    x2 = x + .002
+    y2 = y + .003
+
+    wkt_point = f"POINT({x} {y})" 
+    cql_filter = f"INTERSECTS(the_geom, {wkt_point})" 
 
     payload = {
         'service': 'wfs',
@@ -56,6 +62,7 @@ def get_local_catchment(x, y):
 
     # request catchment geometry from point in polygon query from NLDI geoserver
     r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+    print('request url:', r.url)
     resp = r.json()
 
     # get catchment id

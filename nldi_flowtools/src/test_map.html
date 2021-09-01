@@ -28,6 +28,47 @@
 
 
 
+    <!-- <script src="https://leaflet.github.io/Leaflet.draw/docs/examples-0.7.x/libs/leaflet-src.js"></script>  
+    <link rel="stylesheet" href="https://leaflet.github.io/Leaflet.draw/docs/examples-0.7.x/libs/leaflet.css"/> -->
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/Leaflet.draw.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/Leaflet.Draw.Event.js"></script>
+    <link rel="stylesheet" href="https://leaflet.github.io/Leaflet.draw/src/leaflet.draw.css"/>
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/Toolbar.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/Tooltip.js"></script>
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/ext/GeometryUtil.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/ext/LatLngUtil.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/ext/LineUtil.Intersect.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/ext/Polygon.Intersect.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/ext/Polyline.Intersect.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/ext/TouchEvents.js"></script>
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/DrawToolbar.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.Feature.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.SimpleShape.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.Polyline.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.Marker.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.Circle.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.CircleMarker.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.Polygon.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/draw/handler/Draw.Rectangle.js"></script>
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/EditToolbar.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/EditToolbar.Edit.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/EditToolbar.Delete.js"></script>
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/Control.Draw.js"></script>
+
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.Poly.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.SimpleShape.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.Rectangle.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.Marker.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.CircleMarker.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.Circle.js"></script>
+
+
 	<style>
 
         body {
@@ -60,10 +101,12 @@ var layerControl;
 var loadingToast;
 var startTime;
 var runsplitcatchment = true;
+var query_polygon = false;
 var runxstool = false;
 var truefalse = 'True';
 var direction = 'down';
 var payload;
+var poly_coords;
 
 //main document ready function
 $(document).ready(function () {
@@ -115,6 +158,34 @@ $(document).ready(function () {
     })
 
     flowtoolsButton.addTo(map);
+
+    var shapeQueryButton = L.easyButton(
+        {
+            states: [{
+                stateName: 'point',
+                icon:       '<strong>Point</strong>',
+                title:      'Point Query',
+                onClick: function(control) {
+                    control.state('polygon');
+                    map.off('click', delineatePoint);
+                    poly_submit.addTo(map);
+                    query_polygon = true;
+                }
+            }, {
+                stateName: 'polygon',
+                icon:       '<strong>Polygon</strong>',
+                title:      'Polygon Query',
+                onClick: function(control) {
+                    control.state('point');
+                    map.on('click', delineatePoint);
+                    poly_submit.remove(map);
+                    query_polygon = false;
+                }
+            }
+        ]
+    });
+    shapeQueryButton.button.style.width = '70px';
+    shapeQueryButton.addTo(map);
 
     var functionButton = L.easyButton(
         {
@@ -199,8 +270,53 @@ $(document).ready(function () {
     });
     directionButton.button.style.width = '100px';
 
+    var drawnItems = L.featureGroup().addTo(map);
 
-    layerControl = L.control.layers({' Basemap': basemap}).addTo(map);
+    layerControl = L.control.layers({
+        ' Basemap': basemap
+    }, { 'drawlayer': drawnItems }, { position: 'topright', collapsed: false }).addTo(map);
+    
+    map.addControl(new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems,
+            poly: {
+                allowIntersection: false
+            }
+        },
+        draw: {
+            polygon: {
+                allowIntersection: false,
+                showArea: true
+            },
+            circle: false,
+            marker: false,
+            polyline: false,
+            rectangle: false,
+            circlemarker: false
+        }
+    }));
+
+    map.on(L.Draw.Event.CREATED, function (event) {
+        var layer = event.layer;
+
+        drawnItems.addLayer(layer);
+        console.log('layer coords ',layer.getLatLngs());
+        // poly_coords = layer.toGeoJSON().geometry.coordinates;
+        poly_coords = [].concat.apply([], layer.toGeoJSON().geometry.coordinates);
+        console.log('poly_coords ', poly_coords, typeof(poly_coords));
+    });
+
+    var poly_submit = L.easyButton({
+        states: [{
+            stateName: 'submit',
+            icon:       '<strong>Submit</strong>',
+            onClick: function() {
+                delineatePoint(drawnItems)
+            }
+        }]
+    });
+    poly_submit.button.style.width = '70px';
+
     var options = {
       position: 'topright',         // Leaflet control position option
       circleMarker: {               // Leaflet circle marker options for points used in this plugin
@@ -267,6 +383,8 @@ function changeCursor() {
 
 function delineatePoint(e) {
 
+    // console.log('e: ', e)
+
     startTime = performance.now();
     loadingToast = toastr.info('Delineating wastershed...', {timeOut: 0});
 
@@ -316,15 +434,29 @@ function delineatePoint(e) {
         map.removeLayer(downstreamPath)
     }
 
+    if (e.latlng) {
+        var data =  (e.latlng.lat, e.latlng.lng)
+            // lat: e.latlng.lat,
+            // lng: e.latlng.lng
+        
+    }
 
-    var data = {
-        lat: e.latlng.lat,
-        lng: e.latlng.lng
+    else {
+        var data = [].concat.apply([], poly_coords)
+        // for (p in poly_coords) {
+        //     data.push(poly_coords(p)(lng), poly_coords(p)(lat))
+        // }
+        data = data.join()
+        console.log('data:', data, typeof(data))
+        
     }
 
     var payload = {
-        lat: data.lat,
-        lng: data.lng,
+        // lat: data.lat,
+        // lng: data.lng,
+        // lat, lng: data,
+        lnglat: data,
+        query_polygon: query_polygon,
         runsplitcatchment: runsplitcatchment,
         truefalse: truefalse,
         direction: direction
@@ -332,8 +464,8 @@ function delineatePoint(e) {
 
     console.log('payload: ', payload)
 
-    startPoint = L.marker([data.lat,data.lng]).addTo(map);   
-    startPoint.bindPopup('<b>Click point: </b>' + '<br>' +data.lng + ', ' + data.lat + '</br>').openPopup();
+    // startPoint = L.marker([data.lat,data.lng]).addTo(map);   
+    // startPoint.bindPopup('<b>Click point: </b>' + '<br>' +data.lng + ', ' + data.lat + '</br>').openPopup();
     
 
     $.ajax({ 
@@ -548,7 +680,12 @@ function delineatePoint(e) {
     });
 
 
-    }
+}
+
+
+function delineatePolygon(e) {
+    console.log(e);
+}
 
 </script>
 </body>

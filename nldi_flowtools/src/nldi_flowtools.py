@@ -1,5 +1,6 @@
 from .flowtrace import Flowtrace
 from .splitcatchment import SplitCatchment
+from .poly_query import poly_Query
 
 
 
@@ -78,5 +79,11 @@ def flowtrace(lon, lat, raindropTrace, direction):
 
     """
     results = Flowtrace(lon, lat, raindropTrace, direction)
+    results = results.serialize()
+    return results
+
+def poly_query(p_list):
+
+    results = poly_Query(p_list)
     results = results.serialize()
     return results

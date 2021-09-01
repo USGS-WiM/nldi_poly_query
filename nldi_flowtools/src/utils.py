@@ -1,10 +1,12 @@
+from re import U
 import requests
 import rasterio
 import rasterio.mask
 import pyflwdir
 import pyproj
 from pyproj import Geod
-from shapely.ops import transform, split, snap
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.ops import transform, split, snap, unary_union, cascaded_union
 import shapely.geometry
 from shapely.geometry import shape, mapping, Point, GeometryCollection, LineString, MultiLineString, Polygon
 import json
@@ -36,13 +38,31 @@ def transform_geom(proj, geom):
 # return projected_geom
 
 
-def get_local_catchment(x, y):
+def get_local_catchment(p_list):
     """Perform point in polygon query to NLDI geoserver to get local catchment geometry"""
+    # p_list = [-93, 45, -93, 46, -94, 46, -94, 45, -93, 45]
 
-    print('requesting local catchment...')
+    n = len(p_list) - 1
+    print('length of p_list:', n)
+    e = 0
+    p_str = ''
 
-    wkt_point = f"POINT({x} {y})" 
-    cql_filter = f"INTERSECTS(the_geom, {wkt_point})" 
+    while e < n:
+        if e == 0:
+            p_str += f"{p_list[e]} {p_list[e + 1]}"
+        else: 
+            p_str += f", {p_list[e]} {p_list[e + 1]}"
+        e += 2
+
+    if len(p_list) == 2:
+        wkt_point = f"POINT({p_str})" 
+        cql_filter = f"INTERSECTS(the_geom, {wkt_point})"
+        print('requesting local catchment...')
+
+    if len(p_list) > 2:
+        wkt_poly = f"POLYGON(({p_str}))" 
+        cql_filter = f"INTERSECTS(the_geom, {wkt_poly})"
+        print('requesting local catchments...')     
 
     payload = {
         'service': 'wfs',
@@ -56,18 +76,38 @@ def get_local_catchment(x, y):
 
     # request catchment geometry from point in polygon query from NLDI geoserver
     r = requests.get(NLDI_GEOSERVER_URL, params=payload)
- 
+
     resp = r.json()
 
-    # get catchment id
-    catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
-
-    # get main catchment geometry polygon
     features = resp['features']
-    catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+    print('# of catchments', len(features))
 
-    print('got local catchment:', catchmentIdentifier)
-    return catchmentIdentifier, catchmentGeom
+    if len(features) == 1:
+        # get catchment id
+        catchmentIdentifier = json.dumps(features[0]['properties']['featureid'])
+
+        # get main catchment geometry polygon
+        catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+
+        print('got local catchment:', catchmentIdentifier)
+        return catchmentIdentifier, catchmentGeom
+
+    if len(features) > 1:
+        x = 0
+        catchmentIdentifiers = []
+        catchmentGeoms = []
+        while x < len(features):            
+            catchmentIdentifiers.append(json.dumps(features[0]['properties']['featureid']))
+
+            catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
+            x += 1
+        
+        # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
+        m = MultiPolygon(catchmentGeoms)
+        m = m.buffer(0)
+        catchmentGeoms = unary_union(m)
+        # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', len(catchmentGeoms))
+        return catchmentIdentifiers, catchmentGeoms
 # return catchmentIdentifier, catchmentGeom
 
 

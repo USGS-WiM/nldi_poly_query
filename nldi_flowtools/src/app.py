@@ -21,7 +21,7 @@ def main():
     # lat = float(request.args.get('lat'))
     # lng = float(request.args.get('lng'))
     lnglat = request.args.get('lnglat')
-    print('lnglat:', lnglat)
+    # print('lnglat:', lnglat)
     polygon_query = bool(util.strtobool(request.args.get('query_polygon')))
     # runsplitcatchment = request.args.get('runsplitcatchment')
     # truefalse = bool(util.strtobool(request.args.get('truefalse')))
@@ -47,7 +47,7 @@ def main():
             p_list.append(float(num))
         print('unstrung lnglat', p_list)
         results = poly_Query(p_list)
-        print('polygon results:', results)
+        # print('polygon results:', results)
 
     # print("results: ", type(results) , results)
     return results

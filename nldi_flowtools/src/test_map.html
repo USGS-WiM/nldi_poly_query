@@ -490,7 +490,7 @@ function delineatePoint(e) {
                         fillColor: 'yellow',
                         weight: 2,
                         opacity: 1,
-                        color: 'yellow',  //Outline color
+                        color: 'orange',  //Outline color
                         fillOpacity: 0.7         
                     }    
                 }}).addTo(map);
@@ -597,21 +597,21 @@ function delineatePoint(e) {
 
             }
 
-                // if (item['id'] == 'upstreamBasin') {
-                //     //console.log('has adjoint Catchment', res.adjointCatchment)
-                //     upstreamBasin = L.geoJson(item, { style: function(feature) {
-                //         return {
-                //             fillColor: 'red',
-                //             weight: 2,
-                //             opacity: 1,
-                //             color: 'red',  //Outline color
-                //             fillOpacity: 0.7         
-                //         }    
-                //     }}).addTo(map);
-                //     upstreamBasin.addTo(features)
-                //     layerControl.addOverlay(upstreamBasin , "Upstream Basin");
-                    
-                // }
+            if (res[1]['id'] == 'upstreamBasin') {
+                console.log('has upstreamBasin', res[1]['geometry'])
+                upstreamBasin = L.geoJson(res[1]['geometry'], { style: function(feature) {
+                    return {
+                        fillColor: 'red',
+                        weight: 2,
+                        opacity: 1,
+                        color: 'red',  //Outline color
+                        fillOpacity: 0.7         
+                    }    
+                }}).addTo(map);
+                upstreamBasin.addTo(features)
+                layerControl.addOverlay(upstreamBasin , "Upstream Basin");
+                
+            }
 
 
             if (res[1]['id'] == 'mergedCatchment') {
@@ -682,10 +682,6 @@ function delineatePoint(e) {
 
 }
 
-
-function delineatePolygon(e) {
-    console.log(e);
-}
 
 </script>
 </body>

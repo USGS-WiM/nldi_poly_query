@@ -42,24 +42,24 @@ def get_local_catchment(p_list):
     """Perform point in polygon query to NLDI geoserver to get local catchment geometry"""
     # p_list = [-93, 45, -93, 46, -94, 46, -94, 45, -93, 45]
 
-    n = len(p_list) - 1
+    n = len(p_list) - 1  # length of point list
     print('length of p_list:', n)
     e = 0
-    p_str = ''
+    p_str = ''  
 
-    while e < n:
+    while e < n:    # loop thru point list and create string for NLDI query. Points must be in lng lat order
         if e == 0:
             p_str += f"{p_list[e]} {p_list[e + 1]}"
         else: 
             p_str += f", {p_list[e]} {p_list[e + 1]}"
         e += 2
 
-    if len(p_list) == 2:
+    if len(p_list) == 2:        # If there are only 2 coords, then it is a point query
         wkt_point = f"POINT({p_str})" 
         cql_filter = f"INTERSECTS(the_geom, {wkt_point})"
         print('requesting local catchment...')
 
-    if len(p_list) > 2:
+    if len(p_list) > 2:          # If there are more than 2 coords, then it is a polygon query 
         wkt_poly = f"POLYGON(({p_str}))" 
         cql_filter = f"INTERSECTS(the_geom, {wkt_poly})"
         print('requesting local catchments...')     
@@ -81,31 +81,47 @@ def get_local_catchment(p_list):
 
     features = resp['features']
     print('# of catchments', len(features))
+    # print('features:', features) 
 
-    if len(features) == 1:
+    if len(features) == 1:    # if only one catchment is returned....
         # get catchment id
         catchmentIdentifier = json.dumps(features[0]['properties']['featureid'])
 
         # get main catchment geometry polygon
-        catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+        if len(features[0]["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
+            r = 0
+            catchmentGeoms = []
+            while r < len(features[0]["geometry"]['coordinates']):
+                print('Multipolygon catchment found:', json.dumps(features[x]['properties']['featureid']))
+                catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][r][0]))
+                r += 1
+            catchmentGeom = MultiPolygon(catchmentGeoms)
+        else:       # Else, the catchment is a single polygon (as it should be)
+            catchmentGeom = MultiPolygon(features[0]["geometry"]['coordinates'][0][0])
 
         print('got local catchment:', catchmentIdentifier)
         return catchmentIdentifier, catchmentGeom
-
-    if len(features) > 1:
+ 
+    if len(features) > 1:    # If more than one catchment is returned ...
         x = 0
         catchmentIdentifiers = []
         catchmentGeoms = []
-        while x < len(features):            
-            catchmentIdentifiers.append(json.dumps(features[0]['properties']['featureid']))
-
-            catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
+        while x < len(features):    # Loop thru each catchment returned        
+            catchmentIdentifiers.append(json.dumps(features[x]['properties']['featureid']))     # Add catchment IDs to list
+            if len(features[x]["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
+                r = 0
+                while r < len(features[x]["geometry"]['coordinates']):
+                    print('Multipolygon catchment found:', json.dumps(features[x]['properties']['featureid']))
+                    catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][r][0]))
+                    r += 1
+            else:       # Else, the catchment is a single polygon (as it should be)
+                catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
             x += 1
-        
-        # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
+        print('# of catchment geoms:', x )
+        print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
         m = MultiPolygon(catchmentGeoms)
-        m = m.buffer(0)
-        catchmentGeoms = unary_union(m)
+        # m = m.buffer(0)
+        catchmentGeoms = m #unary_union(m)
         # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', len(catchmentGeoms))
         return catchmentIdentifiers, catchmentGeoms
 # return catchmentIdentifier, catchmentGeom

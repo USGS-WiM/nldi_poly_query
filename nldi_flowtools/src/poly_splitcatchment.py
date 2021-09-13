@@ -14,6 +14,7 @@ class Poly_Splitcatchment:
         self.catchmentGeom = None
         self.totalBasinGeoms = []
         self.upcatchmentGeom = None
+        self.nhdflowlines = None
 
         self.run()
 
@@ -24,14 +25,16 @@ class Poly_Splitcatchment:
 
         if self.get_upstream is True:
             upcatchment = geom_to_geojson(self.upcatchmentGeom)
-            feature3 = geojson.Feature(geometry=upcatchment, id='upstreamBasin')
+            feature2 = geojson.Feature(geometry=upcatchment, id='upstreamBasin')
 
-            featurecollection = geojson.FeatureCollection([feature1,  feature3])
+            featurecollection = geojson.FeatureCollection([feature1,  feature2])
             # print(featurecollection)
             return featurecollection
 
         if self.get_flowlines is True:
-            pass
+            flowlines = geom_to_geojson(self.nhdflowlines)
+            feature3 = geojson.Feature(geometry=flowlines, id='nhdFlowlines')
+            
 
 
     def run(self):
@@ -53,4 +56,5 @@ class Poly_Splitcatchment:
             self.upcatchmentGeom = MultiPolygon(polygons)
 
         if self.get_flowlines is True:
-            for id in self.catchmentIDs:
+            # for id in self.catchmentIDs:
+            self.nhdflowlines = get_local_flowlines(self.catchmentIDs)

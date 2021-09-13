@@ -1,4 +1,4 @@
-from .utils import geom_to_geojson, get_local_catchments, get_local_flowlines, get_coordsys, \
+from .utils import geom_to_geojson, get_local_catchments, get_local_flowline, get_coordsys, \
     project_point, get_total_basin, split_catchment, get_onFlowline, get_upstream_basin, merge_geometry
 import geojson
 from shapely.ops import unary_union
@@ -26,7 +26,7 @@ def poly_Query(p_list):
     
     ################ Get local flowlines #################
     # for id in catchmentIDs:
-    #     nhdFlowlineGeom.append(get_local_flowlines(id)[1])
+    #     nhdFlowlineGeom.append(get_local_flowline(id)[1])
     #     for geom in nhdFlowlineGeom:
             
 

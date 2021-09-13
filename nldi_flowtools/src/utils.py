@@ -135,7 +135,7 @@ def get_local_catchments(p_list):
 # return catchmentIdentifiers, catchmentGeoms
 
 
-def get_local_flowlines(catchmentIdentifier):
+def get_local_flowline(catchmentIdentifier):
     """Request NDH Flowline from NLDI with Catchment ID"""
 
     cql_filter = f"comid={catchmentIdentifier}" 
@@ -154,14 +154,36 @@ def get_local_flowlines(catchmentIdentifier):
     # request  flowline geometry from point in polygon query from NLDI geoserver
     r = requests.get(NLDI_GEOSERVER_URL, params=payload)
 
-    flowlines = r.json()
+    flowline = r.json()
 
-    print('got local flowlines')
+    print('got local flowline')
 
     # Convert the flowline to a geometry colelction to be exported
-    nhdGeom = flowlines['features'][0]['geometry']
+    nhdGeom = flowline['features'][0]['geometry']
     nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
     nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
+
+    return flowline, nhdFlowline
+# return flowline, nhdFlowline
+
+def get_local_flowlines(catchmentIdentifiers):
+    """Request NDH Flowlines from NLDI with Catchment ID"""
+
+    payload = {'f': 'json', 'distance': '50'}
+
+    for id in catchmentIdentifiers:
+
+        # request  flowline geometry from point in polygon query from NLDI geoserver
+        r = requests.get(NLDI_URL  + id + '/navigation/UM/flowlines' + payload)
+
+        flowlines = r.json()
+
+        print('got flowline')
+
+        # Convert the flowline to a geometry colelction to be exported
+        nhdGeom = flowlines['features'][0]['geometry']
+        nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
+        nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
 
     return flowlines, nhdFlowline
 # return flowlines, nhdFlowline
@@ -355,16 +377,16 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
 # return split_geom
 
 
-def get_onFlowline(projected_xy, flowlines, transformToRaster):
+def get_onFlowline(projected_xy, flowline, transformToRaster):
     """Determine if x,y is on a NHD Flowline (within 15m)"""
 
     linestringlist = []
-    for pair in flowlines['features'][0]['geometry']['coordinates'][0]:
+    for pair in flowline['features'][0]['geometry']['coordinates'][0]:
         linestringlist.append((pair[0], pair[1]))
 
     linestring = LineString(linestringlist)
 
-    # Project the flowlines to the same crs as the flw raster
+    # Project the flowline to the same crs as the flw raster
     projectedNHD = transform_geom(transformToRaster, linestring)
 
     # What is the distance from the Click Point to the NHD Flowline?
@@ -384,16 +406,16 @@ def get_onFlowline(projected_xy, flowlines, transformToRaster):
 # return onFlowline
 
 
-def get_raindropPath(flw, projected_xy, nhdFlowline, flowlines, transformToRaster, transformToWGS84):
+def get_raindropPath(flw, projected_xy, nhdFlowline, flowline, transformToRaster, transformToWGS84):
 
-    # Convert the flowlines to a linestring
+    # Convert the flowline to a linestring
     linestringlist = []
-    for pair in flowlines['features'][0]['geometry']['coordinates'][0]:
+    for pair in flowline['features'][0]['geometry']['coordinates'][0]:
         linestringlist.append((pair[0], pair[1]))
 
     linestring = LineString(linestringlist)
 
-    # Project the flowlines to the same crs as the flw raster
+    # Project the flowline to the same crs as the flw raster
     projectedNHD = transform_geom(transformToRaster, linestring)  # dfNHD.geometry[0][0]
 
     # Convert the flowline coordinates to a format that can be iterated
@@ -504,7 +526,7 @@ def get_intersectionPoint(x, y, onFlowline, *raindropPath):
 # return intersectionPoint
 
 
-def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
+def get_reachMeasure(intersectionPoint, flowline, *raindropPath):
     """Collect NHD Flowline Reach Code and Measure"""
     print('intersectionPoint: ',  intersectionPoint)
 
@@ -512,19 +534,19 @@ def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
     geod = Geod(ellps="WGS84")
 
     # Convert the flowline to a geometry colelction to be exported
-    nhdGeom = flowlines['features'][0]['geometry']
+    nhdGeom = flowline['features'][0]['geometry']
     nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
 
     # Select the stream name from the NHD Flowline
-    streamname = flowlines['features'][0]['properties']['gnis_name']
+    streamname = flowline['features'][0]['properties']['gnis_name']
     if streamname == ' ':
         streamname = 'none'
 
     # Create streamInfo dict and add some data
     streamInfo = {'gnis_name': streamname,
-                  'comid': flowlines['features'][0]['properties']['comid'],  # 'lengthkm': flowlines['features'][0]['properties']['lengthkm'],
+                  'comid': flowline['features'][0]['properties']['comid'],  # 'lengthkm': flowline['features'][0]['properties']['lengthkm'],
                   'intersectionPoint': (intersectionPoint.coords[0][1], intersectionPoint.coords[0][0]),
-                  'reachcode': flowlines['features'][0]['properties']['reachcode']}
+                  'reachcode': flowline['features'][0]['properties']['reachcode']}
 
     # Add more data to the streamInfo dict
     if raindropPath:
@@ -568,10 +590,10 @@ def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
 # return streamInfo
 
 
-def split_flowline(intersectionPoint, flowlines):
+def split_flowline(intersectionPoint, flowline):
 
     # Convert the flowline to a geometry colelction to be exported
-    nhdGeom = flowlines['features'][0]['geometry']
+    nhdGeom = flowline['features'][0]['geometry']
     nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
     nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
 

@@ -37,8 +37,42 @@ def transform_geom(proj, geom):
     return projected_geom
 # return projected_geom
 
+def get_local_catchment(x, y):
+    """Perform point in polygon query to NLDI geoserver to get local catchment geometry"""
 
-def get_local_catchment(p_list):
+    print('requesting local catchment...')
+
+    wkt_point = f"POINT({x} {y})" 
+    cql_filter = f"INTERSECTS(the_geom, {wkt_point})" 
+
+    payload = {
+        'service': 'wfs',
+        'version': '1.0.0',
+        'request': 'GetFeature',
+        'typeName': 'wmadata:catchmentsp',
+        'outputFormat': 'application/json',
+        'srsName': 'EPSG:4326',
+        'CQL_FILTER': cql_filter
+    }
+
+    # request catchment geometry from point in polygon query from NLDI geoserver
+    r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+ 
+    resp = r.json()
+
+    # get catchment id
+    catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
+
+    # get main catchment geometry polygon
+    features = resp['features']
+    catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+
+    print('got local catchment:', catchmentIdentifier)
+    return catchmentIdentifier, catchmentGeom
+# return catchmentIdentifier, catchmentGeom
+
+
+def get_local_catchments(p_list):
     """Perform point in polygon query to NLDI geoserver to get local catchment geometry"""
     # p_list = [-93, 45, -93, 46, -94, 46, -94, 45, -93, 45]
 
@@ -54,15 +88,10 @@ def get_local_catchment(p_list):
             p_str += f", {p_list[e]} {p_list[e + 1]}"
         e += 2
 
-    if len(p_list) == 2:        # If there are only 2 coords, then it is a point query
-        wkt_point = f"POINT({p_str})" 
-        cql_filter = f"INTERSECTS(the_geom, {wkt_point})"
-        print('requesting local catchment...')
 
-    if len(p_list) > 2:          # If there are more than 2 coords, then it is a polygon query 
-        wkt_poly = f"POLYGON(({p_str}))" 
-        cql_filter = f"INTERSECTS(the_geom, {wkt_poly})"
-        print('requesting local catchments...')     
+    wkt_poly = f"POLYGON(({p_str}))" 
+    cql_filter = f"INTERSECTS(the_geom, {wkt_poly})"
+    print('requesting local catchments...')     
 
     payload = {
         'service': 'wfs',
@@ -75,56 +104,35 @@ def get_local_catchment(p_list):
     }
 
     # request catchment geometry from point in polygon query from NLDI geoserver
+    print('request: ', NLDI_GEOSERVER_URL, payload)
     r = requests.get(NLDI_GEOSERVER_URL, params=payload)
-
     resp = r.json()
 
     features = resp['features']
-    print('# of catchments', len(features))
-    # print('features:', features) 
+    print('# of catchments', len(features)) 
 
-    if len(features) == 1:    # if only one catchment is returned....
-        # get catchment id
-        catchmentIdentifier = json.dumps(features[0]['properties']['featureid'])
-
-        # get main catchment geometry polygon
-        if len(features[0]["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
+    x = 0
+    catchmentIdentifiers = []
+    catchmentGeoms = []
+    while x < len(features):    # Loop thru each catchment returned        
+        catchmentIdentifiers.append(json.dumps(features[x]['properties']['featureid']))     # Add catchment IDs to list
+        if len(features[x]["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
             r = 0
-            catchmentGeoms = []
-            while r < len(features[0]["geometry"]['coordinates']):
+            while r < len(features[x]["geometry"]['coordinates']):
                 print('Multipolygon catchment found:', json.dumps(features[x]['properties']['featureid']))
                 catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][r][0]))
                 r += 1
-            catchmentGeom = MultiPolygon(catchmentGeoms)
         else:       # Else, the catchment is a single polygon (as it should be)
-            catchmentGeom = MultiPolygon(features[0]["geometry"]['coordinates'][0][0])
-
-        print('got local catchment:', catchmentIdentifier)
-        return catchmentIdentifier, catchmentGeom
- 
-    if len(features) > 1:    # If more than one catchment is returned ...
-        x = 0
-        catchmentIdentifiers = []
-        catchmentGeoms = []
-        while x < len(features):    # Loop thru each catchment returned        
-            catchmentIdentifiers.append(json.dumps(features[x]['properties']['featureid']))     # Add catchment IDs to list
-            if len(features[x]["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
-                r = 0
-                while r < len(features[x]["geometry"]['coordinates']):
-                    print('Multipolygon catchment found:', json.dumps(features[x]['properties']['featureid']))
-                    catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][r][0]))
-                    r += 1
-            else:       # Else, the catchment is a single polygon (as it should be)
-                catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
-            x += 1
-        print('# of catchment geoms:', x )
-        print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
-        m = MultiPolygon(catchmentGeoms)
-        # m = m.buffer(0)
-        catchmentGeoms = m #unary_union(m)
-        # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', len(catchmentGeoms))
-        return catchmentIdentifiers, catchmentGeoms
-# return catchmentIdentifier, catchmentGeom
+            catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
+        x += 1
+    print('# of catchment geoms:', x )
+    print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
+    m = MultiPolygon(catchmentGeoms)
+    # m = m.buffer(0)
+    catchmentGeoms = m #unary_union(m)
+    # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', len(catchmentGeoms))
+    return catchmentIdentifiers, catchmentGeoms
+# return catchmentIdentifiers, catchmentGeoms
 
 
 def get_local_flowlines(catchmentIdentifier):

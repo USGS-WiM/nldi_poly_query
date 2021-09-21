@@ -87,6 +87,6 @@ class SplitCatchment:
 
         if self.upstream is True and self.onFlowline is False:
             self.splitCatchment = geom_to_geojson(self.splitCatchmentGeom)
-            self.totalBasinGeom = get_total_basin(self.catchmentIdentifier)
-            self.upstreamBasinGeom = get_upstream_basin(self.catchmentGeom, self.totalBasinGeom)
-            self.upstreamBasin = geom_to_geojson(self.upstreamBasinGeom)
+            # self.totalBasinGeom = get_total_basin(self.catchmentIdentifier)
+            # self.upstreamBasinGeom = get_upstream_basin(self.catchmentGeom, self.totalBasinGeom)
+            # self.upstreamBasin = geom_to_geojson(self.upstreamBasinGeom)

@@ -166,26 +166,30 @@ def get_local_flowline(catchmentIdentifier):
     return flowline, nhdFlowline
 # return flowline, nhdFlowline
 
-def get_local_flowlines(catchmentIdentifiers):
+def get_local_flowlines(catchmentIdentifiers, *dist):
     """Request NDH Flowlines from NLDI with Catchment ID"""
+    dist = 50
 
-    payload = {'f': 'json', 'distance': '50'}
+    payload = {'f': 'json', 'distance': dist}
+    flowlines = {'type': 'FeatureCollection', 'features': []}
 
     for id in catchmentIdentifiers:
-
         # request  flowline geometry from point in polygon query from NLDI geoserver
-        r = requests.get(NLDI_URL  + id + '/navigation/UM/flowlines' + payload)
+        r = requests.get(NLDI_URL  + id + '/navigation/DM/flowlines', params=payload)
 
-        flowlines = r.json()
-
+        flowline = r.json()
+        flowlines['features'].append(flowline['features'])
+        
         print('got flowline')
 
-        # Convert the flowline to a geometry colelction to be exported
-        nhdGeom = flowlines['features'][0]['geometry']
-        nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
-        nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
+        # Convert the flowline to a geometry collection to be exported
+    nhdGeom = []
+    for line in flowlines['features']:
+        for feature in line:
+            nhdGeom.append(feature['geometry']['coordinates'])
+    nhdFlowlines = MultiLineString(nhdGeom)
 
-    return flowlines, nhdFlowline
+    return flowlines, nhdFlowlines
 # return flowlines, nhdFlowline
 
 

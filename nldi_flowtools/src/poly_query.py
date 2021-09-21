@@ -1,55 +1,62 @@
-from .utils import geom_to_geojson, get_local_catchments, get_local_flowline, get_coordsys, \
-    project_point, get_total_basin, split_catchment, get_onFlowline, get_upstream_basin, merge_geometry
+from .utils import geom_to_geojson, get_local_catchments, get_local_flowlines, get_total_basin
 import geojson
-from shapely.ops import unary_union
 from shapely.geometry import MultiPolygon
 
-# catchmentGeom = None
-# catchmentIDs = None
-# totalBasinGeoms = []
-# totalBasinGeom = None
+class Poly_Query:
 
-def poly_Query(p_list):
-    catchmentGeom = None
-    catchmentIDs = None
-    totalBasinGeoms = []
-    totalBasinGeom = None
-    flowlines = []
-    nhdFlowlineGeom = []
-    print('running poly_Query')
-    print('p_list', p_list)
+    def __init__(self, poly=list, get_upstream=bool, get_flowlines=bool):
+        self.poly = poly
+        self.get_upstream = get_upstream
+        self.get_flowlines = get_flowlines
+        self.catchmentIDs = None 
+        self.catchmentGeom = None
+        self.totalBasinGeoms = []
+        self.upcatchmentGeom = None
+        self.nhdflowlines = None
+        self.flowlines = None
 
-    ############# Get overlapping catchments #############
-    catchmentIDs, catchmentGeom = get_local_catchments(p_list)
-    catchment = geom_to_geojson(catchmentGeom)
-    feature1 = geojson.Feature(geometry=catchment, id='catchment', properties={'catchmentID': catchmentIDs})
-    
-    ################ Get local flowlines #################
-    # for id in catchmentIDs:
-    #     nhdFlowlineGeom.append(get_local_flowline(id)[1])
-    #     for geom in nhdFlowlineGeom:
+        self.run()
+
+    def serialize(self):
+
+        catchments = geom_to_geojson(self.catchmentGeom)
+        feature1 = geojson.Feature(geometry=catchments, id='catchment', properties={'catchmentID': self.catchmentIDs})
+
+        if self.get_upstream is True and self.get_flowlines is True:
+            upcatchment = geom_to_geojson(self.upcatchmentGeom)
+            feature2 = geojson.Feature(geometry=upcatchment, id='upstreamBasin')
+
+            flowlines = geom_to_geojson(self.nhdflowlines)
+            feature3 = geojson.Feature(geometry=flowlines, id='nhdFlowlines')
+
+            featurecollection = geojson.FeatureCollection([feature1, feature2, feature3])
+            # print(featurecollection)
+            return featurecollection
+
+        # if self.get_flowlines is True:
+        #     flowlines = geom_to_geojson(self.nhdflowlines)
+        #     feature3 = geojson.Feature(geometry=flowlines, id='nhdFlowlines')
             
 
-    # nhdFlowline = geom_to_geojson()
-    # feature2 = geojson.Feature(geometry=nhdFlowline, id='nhdFlowline')
-    ############# Get upstream basins ####################
-    for id in catchmentIDs:
-        totalBasinGeoms.append(get_total_basin(id))
-        # m = MultiPolygon(totalBasinGeoms)
-        # m = m.buffer(0)
-        # totalBasinGeom = unary_union(m)
-    x = 0
-    polygons = []
-    while x < len(totalBasinGeoms):
-        polygons.append(totalBasinGeoms[x][0])
-        x +=1
-    
-    m = MultiPolygon(polygons)
 
-    catchment = geom_to_geojson(m)
-    feature3 = geojson.Feature(geometry=catchment, id='upstreamBasin')
+    def run(self):
+        # Get the catchments that are overlapped by the polygon
+        self.catchmentIDs, self.catchmentGeom = get_local_catchments(self.poly)  
 
+        if self.get_upstream is True:
+            # Get all upstream catchments
+            for id in self.catchmentIDs:
+                self.totalBasinGeoms.append(get_total_basin(id))
+                # m = MultiPolygon(totalBasinGeoms)
+                # m = m.buffer(0)
+                # totalBasinGeom = unary_union(m)
+            x = 0
+            polygons = []
+            while x < len( self.totalBasinGeoms):
+                polygons.append( self.totalBasinGeoms[x][0])
+                x +=1
+            self.upcatchmentGeom = MultiPolygon(polygons)
 
-    featurecollection = geojson.FeatureCollection([feature1,  feature3])
-    # print(featurecollection)
-    return featurecollection
+        if self.get_flowlines is True:
+            # for id in self.catchmentIDs:
+            self.flowlines, self.nhdflowlines = get_local_flowlines(self.catchmentIDs)

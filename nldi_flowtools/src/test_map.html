@@ -25,8 +25,9 @@
     <!-- Easy Button -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
-
-
+    <!-- Slider  -->
+    <link rel="stylesheet" href="http://eclipse1979.github.io/leaflet.slider/dist/leaflet-slider.css">
+    <script src="http://eclipse1979.github.io/leaflet.slider/dist/leaflet-slider.js"></script>
 
     <!-- <script src="https://leaflet.github.io/Leaflet.draw/docs/examples-0.7.x/libs/leaflet-src.js"></script>  
     <link rel="stylesheet" href="https://leaflet.github.io/Leaflet.draw/docs/examples-0.7.x/libs/leaflet.css"/> -->
@@ -102,6 +103,8 @@ var loadingToast;
 var startTime;
 var runsplitcatchment = true;
 var query_polygon = false;
+var getFlowlines = 'True';
+var getUpstream = 'True';
 var runxstool = false;
 var truefalse = 'True';
 var direction = 'down';
@@ -168,8 +171,14 @@ $(document).ready(function () {
                 onClick: function(control) {
                     control.state('polygon');
                     map.off('click', delineatePoint);
-                    poly_submit.addTo(map);
                     query_polygon = true;
+                    functionButton.remove(map);
+                    truefalseButton.remove(map);
+                    getUpstreamButton.addTo(map);
+                    getFlowlinesButton.addTo(map);
+                    slider.addTo(map);
+                    map.addControl(drawControl);
+                    poly_submit.addTo(map);
                 }
             }, {
                 stateName: 'polygon',
@@ -180,12 +189,78 @@ $(document).ready(function () {
                     map.on('click', delineatePoint);
                     poly_submit.remove(map);
                     query_polygon = false;
+                    functionButton.addTo(map);
+                    truefalseButton.addTo(map);
+                    map.removeControl(drawControl);
+                    getUpstreamButton.remove(map);
+                    getFlowlinesButton.remove(map);
+                    slider.remove(map);
                 }
             }
         ]
     });
     shapeQueryButton.button.style.width = '70px';
     shapeQueryButton.addTo(map);
+
+    var getUpstreamButton = L.easyButton(
+        {
+            states: [{
+                stateName: 'yes',
+                icon: '<strong>Get Upstream Basins</strong>',
+                title: 'Get Upstream Basins',
+                onClick: function(control) {
+                    control.state('no');
+                    getUpstream = 'False';
+                }
+            }, {
+                stateName: 'no',
+                icon: '<strong>No Upstream Basins</strong>',
+                title: 'No Upstream Basins',
+                onClick: function(control) {
+                    control.state('yes');
+                    getUpstream = 'True';
+                }
+            }
+            ]
+        }
+    )
+    getUpstreamButton.button.style.width = '150px';
+
+    var getFlowlinesButton = L.easyButton(
+        {
+            states: [{
+                stateName: 'yes',
+                icon: '<strong>Get Flowlines Basins</strong>',
+                title: 'Get Flowlines Basins',
+                onClick: function(control) {
+                    control.state('no');
+                    getFlowlines = 'False';
+                    slider.remove(map);
+                }
+            }, {
+                stateName: 'no',
+                icon: '<strong>No Flowlines Basins</strong>',
+                title: 'No Flowlines Basins',
+                onClick: function(control) {
+                    control.state('yes');
+                    getFlowlines = 'True';
+                    slider.addTo(map);
+                }
+            }
+            ]
+        }
+    )
+    getFlowlinesButton.button.style.width = '150px';
+
+    slider = L.control.slider(function(value) {        }, {
+            max: 2000,
+            value: 50,
+            step: 10,
+            size: '250px',
+            orientation:'vertical',
+            id:'slider',
+            position:'topleft'
+        });
 
     var functionButton = L.easyButton(
         {
@@ -276,7 +351,8 @@ $(document).ready(function () {
         ' Basemap': basemap
     }, { 'drawlayer': drawnItems }, { position: 'topright', collapsed: false }).addTo(map);
     
-    map.addControl(new L.Control.Draw({
+    var drawControl = new L.Control.Draw({
+        // draw: false,
         edit: {
             featureGroup: drawnItems,
             poly: {
@@ -294,16 +370,17 @@ $(document).ready(function () {
             rectangle: false,
             circlemarker: false
         }
-    }));
+    });
+    
 
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
 
         drawnItems.addLayer(layer);
-        console.log('layer coords ',layer.getLatLngs());
+        // console.log('layer coords ',layer.getLatLngs());
         // poly_coords = layer.toGeoJSON().geometry.coordinates;
         poly_coords = [].concat.apply([], layer.toGeoJSON().geometry.coordinates);
-        console.log('poly_coords ', poly_coords, typeof(poly_coords));
+        // console.log('poly_coords ', poly_coords, typeof(poly_coords));
     });
 
     var poly_submit = L.easyButton({
@@ -438,25 +515,33 @@ function delineatePoint(e) {
         var data =  {  
             lat: e.latlng.lat,
             lng: e.latlng.lng
-        }
-    }
-
-    else {
-        var data = [].concat.apply([], poly_coords)
-        data = data.join()
-        console.log('data:', data, typeof(data))
-        
-    }
-
-    var payload = {
+        };
+        var payload = {
         lat: data.lat,
         lng: data.lng,
-        lnglat: data,
         query_polygon: query_polygon,
         runsplitcatchment: runsplitcatchment,
         truefalse: truefalse,
-        direction: direction
+        direction: direction,
     }
+
+        
+    }
+
+    else {
+        var data = [].concat.apply([], poly_coords);
+        data = data.join();
+        // console.log('data:', data, typeof(data));
+        
+        var payload = {
+            lnglat: data,
+            query_polygon: query_polygon,
+            getUpstream: getUpstream,
+            getFlowlines: getFlowlines
+        }
+    }
+
+    
 
     console.log('payload: ', payload)
 
@@ -654,6 +739,22 @@ function delineatePoint(e) {
                     }}).addTo(map);
                     raindropPath.addTo(features)
                     layerControl.addOverlay(raindropPath , "Raindrop Path");
+                }
+
+                if (res[1]['id'] == 'nhdFlowlines') {
+                    //console.log('has nhdFlowline', res.nhdFlowline)
+                    nhdFlowline = L.geoJson(res[1]['geometry'], { style: function(feature) {
+                        return {
+                            fillColor: 'blue',
+                            weight: 2,
+                            opacity: 1,
+                            color: 'blue',  //Outline color
+                            fillOpacity: 0.2        
+                        }    
+                    }}).addTo(map);
+                    nhdFlowline.addTo(features)
+                    layerControl.addOverlay(nhdFlowline , "NHD Flowlines");
+                    
                 }
 
                 if (res[2]['id'] == 'nhdFlowlines') {

@@ -82,8 +82,8 @@ def flowtrace(lon, lat, raindropTrace, direction):
     results = results.serialize()
     return results
 
-def poly_query(p_list, upstream, get_flowlines):
+def poly_query(p_list, get_upstream, get_flowlines):
 
-    results = Poly_Query(p_list, upstream, get_flowlines)
+    results = Poly_Query(p_list, get_upstream, get_flowlines)
     results = results.serialize()
     return results

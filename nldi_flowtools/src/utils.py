@@ -168,7 +168,8 @@ def get_local_flowline(catchmentIdentifier):
 
 def get_local_flowlines(catchmentIdentifiers, *dist):
     """Request NDH Flowlines from NLDI with Catchment ID"""
-    dist = 50
+    if not dist:
+        dist = 50
 
     payload = {'f': 'json', 'distance': dist}
     flowlines = {'type': 'FeatureCollection', 'features': []}

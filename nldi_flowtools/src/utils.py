@@ -1,17 +1,14 @@
-from re import U
-import requests
-import rasterio
+# from re import U
+from requests import get
+from rasterio import open, features
 import rasterio.mask
-import pyflwdir
-import pyproj
-from pyproj import Geod
-from shapely.geometry.multipolygon import MultiPolygon
-from shapely.ops import transform, split, snap, unary_union, cascaded_union
-import shapely.geometry
-from shapely.geometry import shape, mapping, Point, GeometryCollection, LineString, MultiLineString, Polygon
+from pyflwdir import from_array
+from pyproj import Geod, CRS, Transformer
+from shapely.ops import transform, split, snap, unary_union
+from shapely.geometry import shape, mapping, Point, GeometryCollection, LineString, MultiLineString, Polygon, MultiPoint, MultiPolygon
 import json
 import numpy as np
-import math
+from math import isinf
 
 # arguments
 NLDI_URL = 'https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/'
@@ -56,7 +53,7 @@ def get_local_catchment(x, y):
     }
 
     # request catchment geometry from point in polygon query from NLDI geoserver
-    r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+    r = get(NLDI_GEOSERVER_URL, params=payload)
  
     resp = r.json()
 
@@ -72,25 +69,14 @@ def get_local_catchment(x, y):
 # return catchmentIdentifier, catchmentGeom
 
 
-def get_local_catchments(p_list):
-    """Perform point in polygon query to NLDI geoserver to get local catchment geometry"""
-    # p_list = [-93, 45, -93, 46, -94, 46, -94, 45, -93, 45]
+def get_local_catchments(coords):
+    """Perform polygon intersect query to NLDI geoserver to get local catchments"""
+    # # coords should be in json, like this: "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]]
 
-    n = len(p_list) - 1  # length of point list
-    print('length of p_list:', n)
-    e = 0
-    p_str = ''  
-
-    while e < n:    # loop thru point list and create string for NLDI query. Points must be in lng lat order
-        if e == 0:
-            p_str += f"{p_list[e]} {p_list[e + 1]}"
-        else: 
-            p_str += f", {p_list[e]} {p_list[e + 1]}"
-        e += 2
-
-
-    wkt_poly = f"POLYGON(({p_str}))" 
-    cql_filter = f"INTERSECTS(the_geom, {wkt_poly})"
+    # Convert coords to shapely geom
+    poly = Polygon(coords)
+    
+    cql_filter = f"INTERSECTS(the_geom, {poly.wkt})"
     print('requesting local catchments...')     
 
     payload = {
@@ -105,7 +91,7 @@ def get_local_catchments(p_list):
 
     # request catchment geometry from point in polygon query from NLDI geoserver
     print('request: ', NLDI_GEOSERVER_URL, payload)
-    r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+    r = get(NLDI_GEOSERVER_URL, params=payload)
     resp = r.json()
 
     features = resp['features']
@@ -128,9 +114,8 @@ def get_local_catchments(p_list):
     print('# of catchment geoms:', x )
     print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
     m = MultiPolygon(catchmentGeoms)
-    # m = m.buffer(0)
-    catchmentGeoms = m #unary_union(m)
-    # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', len(catchmentGeoms))
+    catchmentGeoms = m 
+    
     return catchmentIdentifiers, catchmentGeoms
 # return catchmentIdentifiers, catchmentGeoms
 
@@ -152,7 +137,7 @@ def get_local_flowline(catchmentIdentifier):
     }
 
     # request  flowline geometry from point in polygon query from NLDI geoserver
-    r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+    r = get(NLDI_GEOSERVER_URL, params=payload)
 
     flowline = r.json()
 
@@ -176,7 +161,7 @@ def get_local_flowlines(catchmentIdentifiers, *dist):
 
     for id in catchmentIdentifiers:
         # request  flowline geometry from point in polygon query from NLDI geoserver
-        r = requests.get(NLDI_URL  + id + '/navigation/DM/flowlines', params=payload)
+        r = get(NLDI_URL  + id + '/navigation/DM/flowlines', params=payload)
 
         flowline = r.json()
         flowlines['features'].append(flowline['features'])
@@ -184,10 +169,7 @@ def get_local_flowlines(catchmentIdentifiers, *dist):
         print('got flowline')
 
         # Convert the flowline to a geometry collection to be exported
-    nhdGeom = []
-    for line in flowlines['features']:
-        for feature in line:
-            nhdGeom.append(feature['geometry']['coordinates'])
+    nhdGeom = [feature['geometry']['coordinates'] for line in flowlines['features'] for feature in line]
     nhdFlowlines = MultiLineString(nhdGeom)
 
     return flowlines, nhdFlowlines
@@ -203,7 +185,7 @@ def get_total_basin(catchmentIdentifier):
     payload = {'f': 'json', 'simplified': 'false'}
 
     # request upstream basin from NLDI using comid of catchment point is in
-    r = requests.get(NLDI_URL + catchmentIdentifier + '/basin', params=payload)
+    r = get(NLDI_URL + catchmentIdentifier + '/basin', params=payload)
 
     resp = r.json()
 
@@ -251,18 +233,18 @@ def merge_geometry(catchment, splitCatchment, upstreamBasin):
 def get_coordsys():
     """Get coordinate system of input flow direction raster"""
 
-    with rasterio.open(IN_FDR_COG, 'r') as ds:
+    with open(IN_FDR_COG, 'r') as ds:
         # get raster crs
         dest_crs = ds.crs
 
         # create wgs84 crs
-        wgs84 = pyproj.CRS('EPSG:4326')
+        wgs84 = CRS('EPSG:4326')
 
         # check to see if raster is already wgs84
         # latlon = dest_crs == wgs84
 
-        transformToRaster = pyproj.Transformer.from_crs(wgs84, dest_crs, always_xy=True).transform
-        transformToWGS84 = pyproj.Transformer.from_crs(dest_crs, wgs84, always_xy=True).transform
+        transformToRaster = Transformer.from_crs(wgs84, dest_crs, always_xy=True).transform
+        transformToWGS84 = Transformer.from_crs(dest_crs, wgs84, always_xy=True).transform
 
     return transformToRaster, transformToWGS84
 # return transformToRaster, transformToWGS84
@@ -283,7 +265,7 @@ def project_point(x, y, transformToRaster):
     # then the point was not properly projected to the CRS of the DEM. This has happened
     # when proj version is greater than 6.2.1
     projected_x = projected_point.coords[:][0][0]
-    if math.isinf(projected_x) is True:
+    if isinf(projected_x) is True:
         print('Input point was not properly projected. Check PROJ version, must be 6.2.1. Quiting program.')
         exit()
 
@@ -295,13 +277,13 @@ def get_flowgrid(catchment_geom, transformToRaster):
     """Use a 90 meter buffer of the local catchment to clip NHD Plus v2 flow direction raster"""
 
     print('start clip raster')
-    with rasterio.open(IN_FDR_COG, 'r') as ds:
+    with open(IN_FDR_COG, 'r') as ds:
 
         # get raster crs
         dest_crs = ds.crs
 
         # create wgs84 crs
-        wgs84 = pyproj.CRS('EPSG:4326')
+        wgs84 = CRS('EPSG:4326')
 
         # check to see if raster is already wgs84
         latlon = dest_crs == wgs84
@@ -317,7 +299,7 @@ def get_flowgrid(catchment_geom, transformToRaster):
         print('finish clip raster')
 
     # import clipped fdr into pyflwdir
-    flw = pyflwdir.from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
+    flw = from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
 
     return flw, flwdir_transform
 # return flw, flwdir_transform
@@ -328,7 +310,7 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
 
     print('start split catchment...')
 
-    with rasterio.open(IN_FDR_COG, 'r') as ds:
+    with open(IN_FDR_COG, 'r') as ds:
         profile = ds.profile
 
         # print fdr value at click point
@@ -339,7 +321,7 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
         dest_crs = ds.crs
 
         # create wgs84 crs
-        wgs84 = pyproj.CRS('EPSG:4326')
+        wgs84 = CRS('EPSG:4326')
 
         # check to see if raster is already wgs84
         latlon = dest_crs == wgs84
@@ -355,7 +337,7 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
         print('finish clip raster')
 
     # import clipped fdr into pyflwdir
-    flw = pyflwdir.from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
+    flw = from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
 
     # used for snapping click point
     stream_order = flw.stream_order()
@@ -369,7 +351,7 @@ def split_catchment(catchment_geom, projected_xy, transformToRaster, transformTo
 
     # convert raster to features
     mask = subbasins != 0
-    polys = rasterio.features.shapes(subbasins, transform=flwdir_transform, mask=mask)
+    polys = features.shapes(subbasins, transform=flwdir_transform, mask=mask)
 
     # just get one we want [not sure why we need to grab this]
     poly = next(polys)
@@ -490,18 +472,18 @@ def get_raindropPath(flw, projected_xy, nhdFlowline, flowline, transformToRaster
 
     # Filter the intersecting points by geometry type. The downstream path
     # will then be split by each point in the intersectionpoints geom.
-    if type(intersectionpoints) == shapely.geometry.multipoint.MultiPoint:
+    if type(intersectionpoints) == MultiPoint:
         for i in intersectionpoints:
             splitPoint = snap(Point(i.coords), snapPath, .0002)
             snapPath = split(snapPath[0], splitPoint)
-    if type(intersectionpoints) == shapely.geometry.linestring.LineString:
+    if type(intersectionpoints) == LineString:
         for i in intersectionpoints.coords:
             splitPoint = snap(Point(i), snapPath, .0002)
             snapPath = split(snapPath[0], splitPoint)
-    if type(intersectionpoints) == shapely.geometry.point.Point:
+    if type(intersectionpoints) == Point:
         splitPoint = snap(intersectionpoints, snapPath, .0002)
         snapPath = split(snapPath[0], splitPoint)
-    if type(intersectionpoints) == shapely.geometry.multilinestring.MultiLineString or type(intersectionpoints) == shapely.geometry.collection.GeometryCollection:
+    if type(intersectionpoints) == MultiLineString or type(intersectionpoints) == GeometryCollection:
         for i in intersectionpoints:
             for j in i.coords:
                 splitPoint = snap(Point(j), snapPath, .0002)

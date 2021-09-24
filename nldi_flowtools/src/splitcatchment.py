@@ -1,6 +1,6 @@
 from .utils import geom_to_geojson, get_local_catchment, get_local_flowline, get_coordsys, \
     project_point, get_total_basin, split_catchment, get_onFlowline, get_upstream_basin, merge_geometry
-import geojson
+from geojson import FeatureCollection, Feature
 
 
 class SplitCatchment:
@@ -45,22 +45,22 @@ class SplitCatchment:
         print('Splitcatment variable, self.upstream: ', self.upstream)
         # If upstream == False, only return the local catchment and the splitcatchment geometries
         if self.upstream is False:
-            feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
-            feature2 = geojson.Feature(geometry=self.splitCatchment, id='splitCatchment')
-            featurecollection = geojson.FeatureCollection([feature1, feature2])
+            feature1 = Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
+            feature2 = Feature(geometry=self.splitCatchment, id='splitCatchment')
+            featurecollection = FeatureCollection([feature1, feature2])
 
         # If upstream == True and the clickpoint is on a NHD FLowline, return the local catchment and the merged catchment (splitcatchment merged with all upstream basins)
         if self.upstream is True and self.onFlowline is True:
-            feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
-            feature2 = geojson.Feature(geometry=self.mergedCatchment, id='mergedCatchment')
-            featurecollection = geojson.FeatureCollection([feature1, feature2])
+            feature1 = Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
+            feature2 = Feature(geometry=self.mergedCatchment, id='mergedCatchment')
+            featurecollection = FeatureCollection([feature1, feature2])
 
         # If upstream == True and the clickpoint is NOT on a NHD FLowline, return the local catchment and splitcatchment 
         if self.upstream is True and self.onFlowline is False:
-            feature1 = geojson.Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
-            feature2 = geojson.Feature(geometry=self.splitCatchment, id='splitCatchment')
-            # feature3 = geojson.Feature(geometry=self.upstreamBasin, id='upstreamBasin')
-            featurecollection = geojson.FeatureCollection([feature1, feature2])
+            feature1 = Feature(geometry=self.catchment, id='catchment', properties={'catchmentID': self.catchmentIdentifier})
+            feature2 = Feature(geometry=self.splitCatchment, id='splitCatchment')
+            # feature3 = Feature(geometry=self.upstreamBasin, id='upstreamBasin')
+            featurecollection = FeatureCollection([feature1, feature2])
 
         # print(featurecollection)
         return featurecollection

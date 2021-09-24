@@ -378,9 +378,10 @@ $(document).ready(function () {
 
         drawnItems.addLayer(layer);
         // console.log('layer coords ',layer.getLatLngs());
-        // poly_coords = layer.toGeoJSON().geometry.coordinates;
+        poly_coords = layer.toGeoJSON().geometry.coordinates;
+        console.log('poly_coords ', poly_coords, typeof(poly_coords));
         poly_coords = [].concat.apply([], layer.toGeoJSON().geometry.coordinates);
-        // console.log('poly_coords ', poly_coords, typeof(poly_coords));
+        console.log('poly_coords ', poly_coords, typeof(poly_coords));
     });
 
     var poly_submit = L.easyButton({
@@ -529,9 +530,9 @@ function delineatePoint(e) {
     }
 
     else {
-        var data = [].concat.apply([], poly_coords);
-        data = data.join();
-        // console.log('data:', data, typeof(data));
+        var data = '[['+ poly_coords.join('],[') + ']]' //[].concat.apply([], poly_coords);
+        // data = data.join();
+        console.log('data:', data, typeof(data));
         
         var payload = {
             lnglat: data,

@@ -1,7 +1,7 @@
 from .utils import geom_to_geojson, get_local_catchment, get_local_flowline, get_coordsys, \
     project_point, get_flowgrid, get_onFlowline, get_raindropPath, get_intersectionPoint, get_reachMeasure, \
     split_flowline
-import geojson
+from geojson import Feature, FeatureCollection
 
 
 class Flowtrace:
@@ -58,46 +58,46 @@ class Flowtrace:
 
         if self.onFlowline is True:
             if self.direction == 'up':
-                feature1 = geojson.Feature(geometry=self.upstreamFlowline, id='upstreamFlowline', properties=self.streamInfo)
-                featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.upstreamFlowline, id='upstreamFlowline', properties=self.streamInfo)
+                featurecollection = FeatureCollection([feature1])
 
             if self.direction == 'down':
-                feature1 = geojson.Feature(geometry=self.downstreamFlowline, id='downstreamFlowline', properties=self.streamInfo)
-                featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.downstreamFlowline, id='downstreamFlowline', properties=self.streamInfo)
+                featurecollection = FeatureCollection([feature1])
 
             if self.direction == 'none':
-                feature1 = geojson.Feature(geometry=self.nhdFlowline, id='nhdFlowline', properties=self.streamInfo)
-                featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.nhdFlowline, id='nhdFlowline', properties=self.streamInfo)
+                featurecollection = FeatureCollection([feature1])
 
         if self.onFlowline is False:
             if self.direction == 'up' and self.raindropTrace is True:
-                feature1 = geojson.Feature(geometry=self.upstreamFlowline, id='upstreamFlowline', properties=self.streamInfo)
-                feature2 = geojson.Feature(geometry=self.raindropPath, id='raindropPath')
-                featurecollection = geojson.FeatureCollection([feature1, feature2])
+                feature1 = Feature(geometry=self.upstreamFlowline, id='upstreamFlowline', properties=self.streamInfo)
+                feature2 = Feature(geometry=self.raindropPath, id='raindropPath')
+                featurecollection = FeatureCollection([feature1, feature2])
 
             if self.direction == 'down' and self.raindropTrace is True:
-                feature1 = geojson.Feature(geometry=self.downstreamFlowline, id='downstreamFlowline', properties=self.streamInfo)
-                feature2 = geojson.Feature(geometry=self.raindropPath, id='raindropPath')
-                featurecollection = geojson.FeatureCollection([feature1, feature2])
-                # feature1 = geojson.Feature(geometry=self.downstreamPath, id='downstreamPath', properties=self.streamInfo)
-                # featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.downstreamFlowline, id='downstreamFlowline', properties=self.streamInfo)
+                feature2 = Feature(geometry=self.raindropPath, id='raindropPath')
+                featurecollection = FeatureCollection([feature1, feature2])
+                # feature1 = Feature(geometry=self.downstreamPath, id='downstreamPath', properties=self.streamInfo)
+                # featurecollection = FeatureCollection([feature1])
 
             if self.direction == 'none' and self.raindropTrace is True:
-                feature1 = geojson.Feature(geometry=self.nhdFlowline, id='nhdFlowline', properties=self.streamInfo)
-                feature2 = geojson.Feature(geometry=self.raindropPath, id='raindropPath')
-                featurecollection = geojson.FeatureCollection([feature1, feature2])
+                feature1 = Feature(geometry=self.nhdFlowline, id='nhdFlowline', properties=self.streamInfo)
+                feature2 = Feature(geometry=self.raindropPath, id='raindropPath')
+                featurecollection = FeatureCollection([feature1, feature2])
 
             if self.direction == 'up' and self.raindropTrace is False:
-                feature1 = geojson.Feature(geometry=self.upstreamFlowline, id='upstreamFlowline', properties=self.streamInfo)
-                featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.upstreamFlowline, id='upstreamFlowline', properties=self.streamInfo)
+                featurecollection = FeatureCollection([feature1])
 
             if self.direction == 'down' and self.raindropTrace is False:
-                feature1 = geojson.Feature(geometry=self.downstreamFlowline, id='downstreamFlowline', properties=self.streamInfo)
-                featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.downstreamFlowline, id='downstreamFlowline', properties=self.streamInfo)
+                featurecollection = FeatureCollection([feature1])
 
             if self.direction == 'none' and self.raindropTrace is False:
-                feature1 = geojson.Feature(geometry=self.nhdFlowline, id='nhdFlowline', properties=self.streamInfo)
-                featurecollection = geojson.FeatureCollection([feature1])
+                feature1 = Feature(geometry=self.nhdFlowline, id='nhdFlowline', properties=self.streamInfo)
+                featurecollection = FeatureCollection([feature1])
 
         # print('featurecollection', type(featurecollection))
         return featurecollection

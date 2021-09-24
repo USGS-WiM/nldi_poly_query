@@ -1,9 +1,11 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
-import requests
+# import requests
 from .nldi_flowtools import flowtrace, splitcatchment, poly_query
 from distutils import util
+import time
+import json
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -18,7 +20,7 @@ def home():
 @cross_origin(origin='*')
 def main():
 
-
+    tic = time.perf_counter()
     polygon_query = bool(util.strtobool(request.args.get('query_polygon')))
     
 
@@ -46,13 +48,18 @@ def main():
         getUpstream =  bool(util.strtobool(request.args.get('getUpstream')))
         getFlowlines =  bool(util.strtobool(request.args.get('getFlowlines')))
         lnglat = request.args.get('lnglat')
-        lnglat = lnglat.split(',')
-        p_list = []
-        for num in lnglat:
-            p_list.append(float(num))
-        print('unstrung lnglat', p_list)
-        results = poly_query(p_list, getUpstream, getFlowlines)
+        print('lnglat:', lnglat)
+        lnglat = json.loads(lnglat)
+        # lnglat = lnglat.split(',')
+        # p_list = []
+        # for num in lnglat:
+        #     p_list.append(float(num))
+        print('unstrung lnglat', lnglat, type(lnglat))
+        results = poly_query(lnglat, getUpstream, getFlowlines)
         # print('polygon results:', results)
 
     # print("results: ", type(results) , results)
+
+    toc = time.perf_counter()
+    print(f"Flowtools completed in {toc - tic:0.4f} seconds")
     return results

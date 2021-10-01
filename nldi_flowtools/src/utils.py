@@ -51,7 +51,7 @@ def get_local_catchment(x, y):
         'srsName': 'EPSG:4326',
         'CQL_FILTER': cql_filter
     }
-
+ 
     # request catchment geometry from point in polygon query from NLDI geoserver
     r = get(NLDI_GEOSERVER_URL, params=payload)
  
@@ -61,8 +61,17 @@ def get_local_catchment(x, y):
     catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
 
     # get main catchment geometry polygon
-    features = resp['features']
-    catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+    features = resp['features'][0]
+    if len(features["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
+        r = 0
+        catchmentGeom = []
+        while r < len(features["geometry"]['coordinates']):
+            print('Multipolygon catchment found:', json.dumps(features['properties']['featureid']))
+            catchmentGeom.append(Polygon(features["geometry"]['coordinates'][r][0]))
+            r += 1
+        catchmentGeom = MultiPolygon(catchmentGeom)
+    else:       # Else, the catchment is a single polygon (as it should be)
+        catchmentGeom = Polygon(features["geometry"]['coordinates'][0][0])
 
     print('got local catchment:', catchmentIdentifier)
     return catchmentIdentifier, catchmentGeom
@@ -295,12 +304,12 @@ def get_flowgrid(catchment_geom, transformToRaster):
         buffer_projected_catchment_geom = GeometryCollection([projected_catchment_geom.buffer(90)])
 
         # clip input fd
-        flwdir, flwdir_transform = rasterio.mask.mask(ds, buffer_projected_catchment_geom, crop=True)
+        flwdir, flwdir_transform = rasterio.mask.mask(ds, buffer_projected_catchment_geom, crop=True)  
         print('finish clip raster')
 
     # import clipped fdr into pyflwdir
     flw = from_array(flwdir[0], ftype='d8', transform=flwdir_transform, latlon=latlon)
-
+    
     return flw, flwdir_transform
 # return flw, flwdir_transform
 
@@ -416,9 +425,10 @@ def get_raindropPath(flw, projected_xy, nhdFlowline, flowline, transformToRaster
     ylist = []
     nhdCellList = []
     for i in line:
-        # if i == line[lastID]:    # Pass the last point in the flowline. Sometimes this point is outside of
-        #     pass                 # the flw raster and this will cause flw.index() to fail.
-        # if i != line[lastID]:
+        # if i == line[-1]:    # Pass the last point in the flowline. Sometimes this point is outside of
+        #      pass                 # the flw raster and this will cause flw.index() to fail.
+        # if i != line[-1]:
+        # print(i)
         xlist = (i[0])
         ylist = (i[1])
         cellIndex = flw.index(xlist, ylist)

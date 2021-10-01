@@ -35,12 +35,12 @@ def main():
     ############# Splitcatchment ##############
         if runsplitcatchment == 'true':
             results = splitcatchment(lng, lat, truefalse)
-            print('splitcatchment results:', results)
+            # print('splitcatchment results:', results)
 
     ############### Flowtrace ###############
         if runsplitcatchment == 'false':
             results = flowtrace(lng, lat, truefalse, direction)
-            print('flowtrace results:', results)
+            # print('flowtrace results:', results)
 
     ############### Polygon Query ############# 
     if polygon_query == True:

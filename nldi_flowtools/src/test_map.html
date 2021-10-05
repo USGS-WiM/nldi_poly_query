@@ -69,6 +69,10 @@
     <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.CircleMarker.js"></script>
     <script src="https://leaflet.github.io/Leaflet.draw/src/edit/handler/Edit.Circle.js"></script>
 
+    <script src="https://8to5developer.github.io/leaflet-custom-searchbox/dist/leaflet.customsearchbox.min.js"></script>
+    <link href="https://8to5developer.github.io/leaflet-custom-searchbox/dist/searchbox.min.css" rel="stylesheet" />
+
+
 
 	<style>
 
@@ -178,6 +182,8 @@ $(document).ready(function () {
                     getFlowlinesButton.addTo(map);
                     slider.addTo(map);
                     map.addControl(drawControl);
+                    map.removeControl(searchbox);
+                    // point_submit.remove(map);
                     poly_submit.addTo(map);
                 }
             }, {
@@ -187,11 +193,13 @@ $(document).ready(function () {
                 onClick: function(control) {
                     control.state('point');
                     map.on('click', delineatePoint);
+                    // point_submit.addTo(map);
                     poly_submit.remove(map);
                     query_polygon = false;
                     functionButton.addTo(map);
                     truefalseButton.addTo(map);
                     map.removeControl(drawControl);
+                    map.addControl(searchbox);
                     getUpstreamButton.remove(map);
                     getFlowlinesButton.remove(map);
                     slider.remove(map);
@@ -379,10 +387,27 @@ $(document).ready(function () {
         drawnItems.addLayer(layer);
         // console.log('layer coords ',layer.getLatLngs());
         poly_coords = layer.toGeoJSON().geometry.coordinates;
-        console.log('poly_coords ', poly_coords, typeof(poly_coords));
+        // console.log('poly_coords ', poly_coords, typeof(poly_coords));
         poly_coords = [].concat.apply([], layer.toGeoJSON().geometry.coordinates);
-        console.log('poly_coords ', poly_coords, typeof(poly_coords));
+        // console.log('poly_coords ', poly_coords, typeof(poly_coords));
     });
+
+    var searchboxControl=createSearchboxControl();
+    var searchbox = new searchboxControl({ });
+        searchbox._searchfunctionCallBack = function (searchkeywords)
+        {
+            console.log(searchkeywords, typeof(searchkeywords));
+            delineatePoint(searchkeywords);
+        }
+    map.addControl(searchbox);
+
+    var upload = L.control({'position':'bottomleft'});
+    upload.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'upload');
+        this._div.innerHTML = 'File upload: <form action="upload" method="POST" enctype="multipart/form-data"><input type="file" name="file" /><input type="submit" value="Upload" /></form>';
+        return this._div;
+    };
+    upload.addTo(map);
 
     var poly_submit = L.easyButton({
         states: [{
@@ -461,7 +486,7 @@ function changeCursor() {
 
 function delineatePoint(e) {
 
-    // console.log('e: ', e)
+    console.log('e: ', e)
 
     startTime = performance.now();
     loadingToast = toastr.info('Delineating wastershed...', {timeOut: 0});
@@ -524,9 +549,23 @@ function delineatePoint(e) {
         runsplitcatchment: runsplitcatchment,
         truefalse: truefalse,
         direction: direction,
+        }
     }
 
-        
+    else if (typeof(e) == 'string') {
+        var data = JSON.parse("[" + e + "]")
+        if (Math.sign(data[0]) == -1) { data = [data[1], data[0]] }
+        var payload = {
+        lat: data[0],
+        lng: data[1],
+        query_polygon: query_polygon,
+        runsplitcatchment: runsplitcatchment,
+        truefalse: truefalse,
+        direction: direction,
+        }
+
+        startPoint = L.marker([data[0],data[1]]).addTo(map);   
+        startPoint.bindPopup('<b>Click point: </b>' + '<br>' +data[1] + ', ' + data[0] + '</br>').openPopup();
     }
 
     else {
@@ -758,22 +797,23 @@ function delineatePoint(e) {
                     
                 }
 
-                if (res[2]['id'] == 'nhdFlowlines') {
-                    //console.log('has nhdFlowline', res.nhdFlowline)
-                    nhdFlowline = L.geoJson(res[2]['geometry'], { style: function(feature) {
-                        return {
-                            fillColor: 'blue',
-                            weight: 2,
-                            opacity: 1,
-                            color: 'blue',  //Outline color
-                            fillOpacity: 0.2        
-                        }    
-                    }}).addTo(map);
-                    nhdFlowline.addTo(features)
-                    layerControl.addOverlay(nhdFlowline , "NHD Flowlines");
-                    
+                if (res[2]){
+                    if (res[2]['id'] == 'nhdFlowlines') {
+                        //console.log('has nhdFlowline', res.nhdFlowline)
+                        nhdFlowline = L.geoJson(res[2]['geometry'], { style: function(feature) {
+                            return {
+                                fillColor: 'blue',
+                                weight: 2,
+                                opacity: 1,
+                                color: 'blue',  //Outline color
+                                fillOpacity: 0.2        
+                            }    
+                        }}).addTo(map);
+                        nhdFlowline.addTo(features)
+                        layerControl.addOverlay(nhdFlowline , "NHD Flowlines");
+                        
+                    }
                 }
-
                 
             
             //console.log('features:',features)

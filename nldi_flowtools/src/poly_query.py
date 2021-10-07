@@ -58,12 +58,38 @@ class Poly_Query:
     def run(self):
         # Get the catchments that are overlapped by the polygon
         print('Running poly_query.py')
-        self.catchmentIDs, self.catchmentGeom = get_local_catchments(self.coords) 
+        # print('self.coords:', self.coords)
+        if not type(self.coords[0][0]) is list:
+            print('single polygon')
+            self.catchmentIDs, self.catchmentGeom = get_local_catchments(self.coords) 
+        
+        if type(self.coords[0][0]) is list:
+            print('multiple polygons')
+            self.catchmentIDs = []
+            self.catchmentGeom = []
+            for x in self.coords:
+                if type(x[0][0][0]) is list:
+                    for y in x:
+                        print('multi polygon')
+                        self.catchmentIDs.extend(get_local_catchments(y[0])[0])
+                        self.catchmentGeom.extend(get_local_catchments(y[0])[1])
+                else:
+                    print('one of the multiple polygons')
+                    self.catchmentIDs.extend(get_local_catchments(x[0])[0])
+                    self.catchmentGeom.extend(get_local_catchments(x[0])[1])
+            print('self.catchmentGeom:', self.catchmentGeom)
+            x = 0
+            polygons = []
+            while x < len( self.catchmentGeom):
+                polygons.append( self.catchmentGeom[x])
+                x +=1
+            self.catchmentGeom = MultiPolygon(polygons)
 
         print('Variables:', type(self.get_upstream), self.get_flowlines)
 
         if self.get_upstream is True and self.get_flowlines is True:
             # Get all upstream catchments
+            print('self.catchmentIDs:', self.catchmentIDs)
             for id in self.catchmentIDs:
                 self.totalBasinGeoms.append(get_total_basin(id))
             x = 0

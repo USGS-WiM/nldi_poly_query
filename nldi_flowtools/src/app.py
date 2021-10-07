@@ -48,13 +48,13 @@ def main():
         getUpstream =  bool(util.strtobool(request.args.get('getUpstream')))
         getFlowlines =  bool(util.strtobool(request.args.get('getFlowlines')))
         lnglat = request.args.get('lnglat')
-        print('lnglat:', lnglat)
+        # print('lnglat:', lnglat)
         lnglat = json.loads(lnglat)
         # lnglat = lnglat.split(',')
         # p_list = []
         # for num in lnglat:
         #     p_list.append(float(num))
-        print('unstrung lnglat', lnglat, type(lnglat))
+        # print('unstrung lnglat', lnglat, type(lnglat))
         results = poly_query(lnglat, getUpstream, getFlowlines)
         # print('polygon results:', results)
 

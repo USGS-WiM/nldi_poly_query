@@ -114,6 +114,7 @@ var truefalse = 'True';
 var direction = 'down';
 var payload;
 var poly_coords;
+var processing_json = false;
 
 //main document ready function
 $(document).ready(function () {
@@ -180,11 +181,12 @@ $(document).ready(function () {
                     truefalseButton.remove(map);
                     getUpstreamButton.addTo(map);
                     getFlowlinesButton.addTo(map);
-                    slider.addTo(map);
                     map.addControl(drawControl);
+                    slider.addTo(map);
                     map.removeControl(searchbox);
                     // point_submit.remove(map);
                     poly_submit.addTo(map);
+                    // upload.addTo(map);
                 }
             }, {
                 stateName: 'polygon',
@@ -203,6 +205,7 @@ $(document).ready(function () {
                     getUpstreamButton.remove(map);
                     getFlowlinesButton.remove(map);
                     slider.remove(map);
+                    // upload.remove(map);
                 }
             }
         ]
@@ -383,7 +386,7 @@ $(document).ready(function () {
 
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
-
+        console.log('layer:', event)
         drawnItems.addLayer(layer);
         // console.log('layer coords ',layer.getLatLngs());
         poly_coords = layer.toGeoJSON().geometry.coordinates;
@@ -399,15 +402,56 @@ $(document).ready(function () {
             console.log(searchkeywords, typeof(searchkeywords));
             delineatePoint(searchkeywords);
         }
+
     map.addControl(searchbox);
+    var div = document.getElementById('searchbox-menubutton');
+    div.remove();
 
     var upload = L.control({'position':'bottomleft'});
     upload.onAdd = function (map) {
         this._div = L.DomUtil.create('div', 'upload');
-        this._div.innerHTML = 'File upload: <form action="upload" method="POST" enctype="multipart/form-data"><input type="file" name="file" /><input type="submit" value="Upload" /></form>';
+        this._div.innerHTML = '<input type="file" id="file-selector"/>'; // /n <ul id="output"></ul>
         return this._div;
     };
     upload.addTo(map);
+
+    console.log('global variables:', window)
+    if (window.FileList && window.File) {
+        console.log('global variables:', window)
+        document.getElementById('file-selector').addEventListener('change', event => {   
+            console.log('global variables:', window)
+            var file = document.getElementById("file-selector").files[0];
+            if (file) {
+                console.log('global variables:', window)
+                processing_json = true;
+                const reader = new FileReader();
+                reader.addEventListener('load', (event) => {                    
+                    var data = JSON.parse(event.target.result);
+                    console.log('data:', typeof(data), data)
+                    if (data.features.length > 1) {
+                        console.log('multipolygon')
+                        poly_coords = []
+                        for (x in data.features) {
+                            console.log('coords to add:', data.features[x].geometry.coordinates)
+                            poly_coords.push(data.features[x].geometry.coordinates)
+                        }
+                    }
+                    else if (data.features.length == 1) {
+                        console.log('Single Polygon')
+                        poly_coords = [data.features.geometry.coordinates]
+                    }
+                    else {
+                        console.log('Cannot read geometry from JSON file')
+                    }
+                    var input_geom = L.geoJSON(data)
+                    layerControl.addOverlay(input_geom , "Polygon");
+                    input_geom.addTo(map);
+                    delineatePoint(data)
+                });
+                reader.readAsText(file);
+            }
+        }); 
+    }
 
     var poly_submit = L.easyButton({
         states: [{
@@ -568,7 +612,20 @@ function delineatePoint(e) {
         startPoint.bindPopup('<b>Click point: </b>' + '<br>' +data[1] + ', ' + data[0] + '</br>').openPopup();
     }
 
+    else if (processing_json) {
+        // console.log('poly_coords;', poly_coords);
+        var data = JSON.stringify(poly_coords);
+        // console.log('data;', data);
+        var payload = {
+            lnglat: data,
+            query_polygon: query_polygon,
+            getUpstream: getUpstream,
+            getFlowlines: getFlowlines
+        }
+    }
+
     else {
+        console.log('poly_coords;', typeof(poly_coords), poly_coords);
         var data = '[['+ poly_coords.join('],[') + ']]' //[].concat.apply([], poly_coords);
         // data = data.join();
         console.log('data:', data, typeof(data));
@@ -583,7 +640,7 @@ function delineatePoint(e) {
 
     
 
-    console.log('payload: ', payload)
+    // console.log('payload: ', payload)
 
     if (e.latlng) {
         startPoint = L.marker([data.lat,data.lng]).addTo(map);   

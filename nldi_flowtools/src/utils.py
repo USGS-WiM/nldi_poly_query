@@ -81,9 +81,15 @@ def get_local_catchment(x, y):
 def get_local_catchments(coords):
     """Perform polygon intersect query to NLDI geoserver to get local catchments"""
     # # coords should be in json, like this: "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]]
-
+    
+    ## If there are more than 237 points, the catchment query will not work
     # Convert coords to shapely geom
-    poly = Polygon(coords)
+    if len(coords) > 237:
+        p = Polygon(coords)
+        poly = p.simplify(0.00135, preserve_topology=False)
+
+    else:
+        poly = Polygon(coords)
     
     cql_filter = f"INTERSECTS(the_geom, {poly.wkt})"
     print('requesting local catchments...')     
@@ -102,7 +108,7 @@ def get_local_catchments(coords):
     print('request: ', NLDI_GEOSERVER_URL, payload)
     r = get(NLDI_GEOSERVER_URL, params=payload)
     resp = r.json()
-
+    
     features = resp['features']
     print('# of catchments', len(features)) 
 
@@ -121,7 +127,7 @@ def get_local_catchments(coords):
             catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
         x += 1
     print('# of catchment geoms:', x )
-    print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
+    # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
     m = MultiPolygon(catchmentGeoms)
     catchmentGeoms = m 
     
@@ -171,7 +177,7 @@ def get_local_flowlines(catchmentIdentifiers, *dist):
     for id in catchmentIdentifiers:
         # request  flowline geometry from point in polygon query from NLDI geoserver
         r = get(NLDI_URL  + id + '/navigation/DM/flowlines', params=payload)
-
+        print('request:', r.url)
         flowline = r.json()
         flowlines['features'].append(flowline['features'])
         

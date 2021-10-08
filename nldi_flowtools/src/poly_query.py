@@ -105,7 +105,8 @@ class Poly_Query:
         if self.get_upstream is False and self.get_flowlines is True:
             print('Getting flowlines, no upstream basins')
             # Get all flowlines
-            self.flowlines, self.nhdflowlines = get_local_flowlines(self.catchmentIDs, 75)
+            self.flowlines, self.nhdflowlines = get_local_flowlines(self.coords)
+            
 
         if self.get_upstream is True and self.get_flowlines is False:
             # Get all upstream catchments

@@ -167,103 +167,80 @@ def get_local_flowline(catchmentIdentifier):
     return flowline, nhdFlowline
 # return flowline, nhdFlowline
 
-# def get_local_flowlines(catchmentIdentifiers, *dist):
-#     """Request NDH Flowlines from NLDI with Catchment ID"""
-#     if not dist:
-#         dist = 0
+def get_local_flowlines(catchmentIdentifiers, *dist):
+    """Request NDH Flowlines from NLDI with Catchment ID"""
+    # if not dist:
+    #     dist = 0
 
-#     # payload = {'f': 'json', 'distance': dist}
-#     flowlines = {'type': 'FeatureCollection', 'features': []}
-
-#     for id in catchmentIdentifiers:
-#         # request  flowline geometry from point in polygon query from NLDI geoserver
-#         # r = get(NLDI_URL  + id + '/navigation/DM/flowlines', params=payload)
-#         cql_filter = f"comid={id}" 
-
-#         payload = {
-#             'service': 'wfs',
-#             'version': '2.0.0',
-#             'request': 'GetFeature',
-#             'typeName': 'wmadata:nhdflowline_network',
-#             'maxFeatures': '500',
-#             'outputFormat': 'application/json',
-#             'srsName': 'EPSG:4326',
-#             'CQL_FILTER': cql_filter
-#         }
-#         r = get(NLDI_GEOSERVER_URL, params=payload)
-#         print('request:', r.url)
-#         flowline = r.json()
-#         flowlines['features'].append(flowline['features'])
-        
-#         print('got flowline')
-
-#         # Convert the flowline to a geometry collection to be exported
-#     nhdGeom = [feature['geometry']['coordinates'] for line in flowlines['features'] for feature in line]
-#     nhdFlowlines = MultiLineString(nhdGeom)
-
-#     return flowlines, nhdFlowlines
-# # return flowlines, nhdFlowline
-
-def get_local_flowlines(coords):
-    """Perform polygon intersect query to NLDI geoserver to get local flowlines"""
-    # # coords should be in json, like this: "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]]
+    catchmentIdentifiers = tuple(catchmentIdentifiers)
     
-    ## If there are more than 237 points, the catchment query will not work
-    # Convert coords to shapely geom
-    if len(coords) > 237:
-        p = Polygon(coords)
-        poly = p.simplify(0.00135, preserve_topology=False)
-
-    else:
-        poly = Polygon(coords)
+    cql_filter = f"comid IN {catchmentIdentifiers}" 
     
-    cql_filter = f"INTERSECTS(the_geom, {poly.wkt})"
-    print('requesting local flowlines...')     
-
     payload = {
         'service': 'wfs',
-        'version': '1.0.0',
+        'version': '2.0.0',
         'request': 'GetFeature',
         'typeName': 'wmadata:nhdflowline_network',
+        'maxFeatures': '500',
         'outputFormat': 'application/json',
         'srsName': 'EPSG:4326',
         'CQL_FILTER': cql_filter
     }
-
-    # request catchment geometry from point in polygon query from NLDI geoserver
-    print('request: ', NLDI_GEOSERVER_URL, payload)
     r = get(NLDI_GEOSERVER_URL, params=payload)
-    print('request_url:', r.url)
-    resp = r.json()
-    
-    features = resp['features']
-    print('# of flowlines', len(features)) 
+    flowlines = r.json()
+    # print('r url;', r.url)
+    print('got flowlines')
 
+    # Convert the flowline to a geometry collection to be exported
+    nhdGeom = [feature['geometry']['coordinates'][0] for feature in flowlines['features']]
+    nhdFlowlines = MultiLineString(nhdGeom)
+
+    
     fromnode_list = []
-    hydroseq_list = {}
-
-    x = 0
-    flowlineIdentifiers = []
-    flowlineGeoms = []
-    while x < len(features):    # Loop thru each catchment returned        
-        flowlineIdentifiers.append(json.dumps(features[x]['properties']['comid']))     # Add catchment IDs to list
-        flowlineGeoms.append(LineString(features[x]["geometry"]['coordinates'][0]))
-        comid = features[x]['properties']['comid']
-        fromnode_list.append(features[x]['properties']['dnhydroseq'])
-        hydroseq = features[x]['properties']['hydroseq']
-        hydroseq_list[comid] = hydroseq
-        x += 1
-    print('# of flowline geoms:', x )
-    # print('flowlineIdentifiers: ', flowlineIdentifiers, 'flowlineGeoms: ', flowlineGeoms)
-    m = MultiLineString(flowlineGeoms)
-    flowlineGeoms = m 
-  
-    # print('outputs:', fromnode_list, hydroseq_list)
-    find_out_flowline(hydroseq_list, fromnode_list)
+    tonode_list = {}
+        # Convert the flowline to a geometry colelction to be exported
         
+    for feature in flowlines['features']:
+        fromnode_list.append(feature['properties']['fromnode'])
+        tonode_list[feature['properties']['comid']] = feature['properties']['tonode']
     
-    return flowlineIdentifiers, flowlineGeoms
-# return flowlineIdentifiers, flowlineGeoms
+    print('outputs:', fromnode_list, tonode_list)
+    outlets = find_out_flowline(tonode_list, fromnode_list)
+
+    if not dist:
+        dist = 0
+
+    if dist:
+        payload = {'f': 'json', 'distance': dist}
+        flowlines = {'type': 'FeatureCollection', 'features': []}
+        downstream_geom = []
+        for id in outlets:
+            # request  flowline geometry from point in polygon query from NLDI geoserver
+            r = get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
+            # cql_filter = f"comid={id}" 
+
+            # payload = {
+            #     'service': 'wfs',
+            #     'version': '2.0.0',
+            #     'request': 'GetFeature',
+            #     'typeName': 'wmadata:nhdflowline_network',
+            #     'maxFeatures': '500',
+            #     'outputFormat': 'application/json',
+            #     'srsName': 'EPSG:4326',
+            #     'distance': dist,
+            #     'CQL_FILTER': cql_filter
+            # }
+            # r = get(NLDI_GEOSERVER_URL, params=payload)
+            flowline = r.json()
+            print('r url;', r.url)
+            downstream_geom.append(flowline['features'][0]['geometry']['coordinates'])
+        # print('ndhGeom:', nhdGeom)
+        downstreamFlowlines = MultiLineString(downstream_geom)
+        nhdFlowlines = MultiLineString()
+        print('got trace downstream flowline')
+
+    return flowlines, nhdFlowlines
+# return flowlines, nhdFlowline
 
 
 def get_total_basin(catchmentIdentifier):
@@ -726,49 +703,15 @@ def merge_downstreamPath(raindropPath, downstreamFlowline):
     return downstreamPath
 # return downstreamPath
 
-def find_out_flowline(hydroseq_list, fromnode_list):
+def find_out_flowline(tonode_list, fromnode_list):
+    # Find all the flowlines that are outlets from the poly_query
     outlet_flowlines = []
-    for key in hydroseq_list:
-        if not int(hydroseq_list[key]) in fromnode_list:
+    for key in tonode_list:
+        if not int(tonode_list[key]) in fromnode_list:
             # print(key, ' is an outlet flowline!')
             outlet_flowlines.append(int(key))
             print('There are ', len(outlet_flowlines), ' outlet flowlines.', outlet_flowlines)
     
-# def get_outlets(catchmentIdentifiers):
-#     """Request NDH Flowlines from NLDI with Catchment ID"""
-
-#     fromnode_list = []
-#     hydroseq_list = {}
-
-#     for id in catchmentIdentifiers:
-#         cql_filter = f"comid={id}" 
-
-#         payload = {
-#             'service': 'wfs',
-#             'version': '2.0.0',
-#             'request': 'GetFeature',
-#             'typeName': 'wmadata:nhdflowline_network',
-#             'maxFeatures': '500',
-#             'outputFormat': 'application/json',
-#             'srsName': 'EPSG:4326',
-#             'CQL_FILTER': cql_filter
-#         }
-
-#         # request  flowline geometry from point in polygon query from NLDI geoserver
-#         r = get(NLDI_GEOSERVER_URL, params=payload)
-#         print('request payload:', payload)
-#         flowline = r.json()
-#         print('response:', flowline)
-#         print('got local flowline')
-
-#     fromnode_list = []
-#     hydroseq_list = {}
-#         # Convert the flowline to a geometry colelction to be exported
-#         comid = flowline['features'][0]['properties']['comid']
-#         fromnode_list.append(flowline['features'][0]['properties']['dnhydroseq'])
-#         hydroseq = flowline['features'][0]['properties']['hydroseq']
-#         hydroseq_list[comid] = hydroseq
-    
-#     print('outputs:', fromnode_list, hydroseq_list)
-#     find_out_flowline(hydroseq_list, fromnode_list)
+    outlet_flowlines = tuple(outlet_flowlines)
+    return outlet_flowlines
         

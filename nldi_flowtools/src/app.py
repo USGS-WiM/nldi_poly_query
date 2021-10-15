@@ -22,7 +22,7 @@ def main():
 
     tic = time.perf_counter()
     polygon_query = bool(util.strtobool(request.args.get('query_polygon')))
-    
+    returnGeoms = True
 
     if polygon_query == False:
         lat = float(request.args.get('lat'))
@@ -55,7 +55,7 @@ def main():
         # for num in lnglat:
         #     p_list.append(float(num))
         # print('unstrung lnglat', lnglat, type(lnglat))
-        results = poly_query(lnglat, getUpstream, getFlowlines)
+        results = poly_query(lnglat, getUpstream, getFlowlines, returnGeoms)
         # print('polygon results:', results)
 
     # print("results: ", type(results) , results)

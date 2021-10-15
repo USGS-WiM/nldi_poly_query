@@ -4,16 +4,18 @@ from shapely.geometry import MultiPolygon
 
 class Poly_Query:
 
-    def __init__(self, coords=list, get_upstream=bool, get_flowlines=bool):
+    def __init__(self, coords=list, get_upstream=bool, get_flowlines=bool, returnGeoms=bool):
         self.coords = coords
         self.get_upstream = get_upstream
         self.get_flowlines = get_flowlines
+        self.returnGeoms = returnGeoms
         self.catchmentIDs = None 
         self.catchmentGeom = None
         self.totalBasinGeoms = []
         self.upcatchmentGeom = None
-        self.nhdflowlines = None
+        self.flowlinesGeom = None
         self.flowlines = None
+        self.downstreamflowlines = None
 
         self.run()
 
@@ -26,8 +28,8 @@ class Poly_Query:
             upcatchment = geom_to_geojson(self.upcatchmentGeom)
             feature2 = Feature(geometry=upcatchment, id='upstreamBasin')
 
-            flowlines = geom_to_geojson(self.nhdflowlines)
-            feature3 = Feature(geometry=flowlines, id='nhdFlowlines')
+            flowlines = geom_to_geojson(self.flowlinesGeom)
+            feature3 = Feature(geometry=flowlines, id='flowlinesGeom')
 
             featurecollection = FeatureCollection([feature1, feature2, feature3])
             
@@ -35,8 +37,8 @@ class Poly_Query:
 
         if self.get_upstream is False and self.get_flowlines is True:
 
-            flowlines = geom_to_geojson(self.nhdflowlines)
-            feature3 = Feature(geometry=flowlines, id='nhdFlowlines')
+            flowlines = geom_to_geojson(self.flowlinesGeom)
+            feature3 = Feature(geometry=flowlines, id='flowlinesGeom')
 
             featurecollection = FeatureCollection([feature1, feature3])
             
@@ -100,12 +102,12 @@ class Poly_Query:
             self.upcatchmentGeom = MultiPolygon(polygons)
 
             # Get all flowlines
-            self.flowlines, self.nhdflowlines = get_local_flowlines(self.catchmentIDs, 75)
+            self.flowlines, self.downstreamflowlines, self.flowlinesGeom = get_local_flowlines(self.catchmentIDs, 75)
 
         if self.get_upstream is False and self.get_flowlines is True:
             print('Getting flowlines, no upstream basins')
             # Get all flowlines
-            self.flowlines, self.nhdflowlines = get_local_flowlines(self.catchmentIDs, 75)
+            self.flowlines, self.downstreamflowlines, self.flowlinesGeom = get_local_flowlines(self.catchmentIDs, 75)
             
 
         if self.get_upstream is True and self.get_flowlines is False:

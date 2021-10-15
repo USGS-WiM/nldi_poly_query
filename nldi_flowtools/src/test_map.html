@@ -115,6 +115,7 @@ var direction = 'down';
 var payload;
 var poly_coords;
 var processing_json = false;
+var downstream_dist = 0;
 
 //main document ready function
 $(document).ready(function () {
@@ -263,9 +264,11 @@ $(document).ready(function () {
     )
     getFlowlinesButton.button.style.width = '150px';
 
-    slider = L.control.slider(function(value) {        }, {
-            max: 2000,
-            value: 50,
+    slider = L.control.slider(function(value) {
+        downstream_dist = value;
+            }, {
+            max: 1000,
+            value: 0,
             step: 10,
             size: '250px',
             orientation:'vertical',
@@ -415,29 +418,25 @@ $(document).ready(function () {
     };
     upload.addTo(map);
 
-    console.log('global variables:', window)
     if (window.FileList && window.File) {
-        console.log('global variables:', window)
         document.getElementById('file-selector').addEventListener('change', event => {   
-            console.log('global variables:', window)
             var file = document.getElementById("file-selector").files[0];
             if (file) {
-                console.log('global variables:', window)
                 processing_json = true;
                 const reader = new FileReader();
                 reader.addEventListener('load', (event) => {                    
                     var data = JSON.parse(event.target.result);
-                    console.log('data:', typeof(data), data)
+                    // console.log('data:', typeof(data), data)
                     if (data.features.length > 1) {
-                        console.log('multipolygon')
+                        // console.log('multipolygon')
                         poly_coords = []
                         for (x in data.features) {
-                            console.log('coords to add:', data.features[x].geometry.coordinates)
+                            // console.log('coords to add:', data.features[x].geometry.coordinates)
                             poly_coords.push(data.features[x].geometry.coordinates)
                         }
                     }
                     else if (data.features.length == 1) {
-                        console.log('Single Polygon')
+                        // console.log('Single Polygon')
                         poly_coords = [data.features.geometry.coordinates]
                     }
                     else {
@@ -838,7 +837,7 @@ function delineatePoint(e) {
                     layerControl.addOverlay(raindropPath , "Raindrop Path");
                 }
 
-                if (res[1]['id'] == 'nhdFlowlines') {
+                if (res[1]['id'] == 'flowlinesGeom') {
                     //console.log('has nhdFlowline', res.nhdFlowline)
                     nhdFlowline = L.geoJson(res[1]['geometry'], { style: function(feature) {
                         return {
@@ -855,7 +854,7 @@ function delineatePoint(e) {
                 }
 
                 if (res[2]){
-                    if (res[2]['id'] == 'nhdFlowlines') {
+                    if (res[2]['id'] == 'flowlinesGeom') {
                         //console.log('has nhdFlowline', res.nhdFlowline)
                         nhdFlowline = L.geoJson(res[2]['geometry'], { style: function(feature) {
                             return {

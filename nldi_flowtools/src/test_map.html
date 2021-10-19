@@ -265,7 +265,9 @@ $(document).ready(function () {
     getFlowlinesButton.button.style.width = '150px';
 
     slider = L.control.slider(function(value) {
+        // console.log('downstream_dist,', downstream_dist);
         downstream_dist = value;
+        // console.log('downstream_dist,', downstream_dist);
             }, {
             max: 1000,
             value: 0,
@@ -579,7 +581,7 @@ function delineatePoint(e) {
         layerControl.removeLayer(downstreamPath);
         map.removeLayer(downstreamPath)
     }
-
+// If the query is for a point...
     if (e.latlng) {
         var data =  {  
             lat: e.latlng.lat,
@@ -594,7 +596,7 @@ function delineatePoint(e) {
         direction: direction,
         }
     }
-
+// If the query is for a drawn polygon...
     else if (typeof(e) == 'string') {
         var data = JSON.parse("[" + e + "]")
         if (Math.sign(data[0]) == -1) { data = [data[1], data[0]] }
@@ -605,12 +607,13 @@ function delineatePoint(e) {
         runsplitcatchment: runsplitcatchment,
         truefalse: truefalse,
         direction: direction,
+        downstream_dist: downstream_dist
         }
 
         startPoint = L.marker([data[0],data[1]]).addTo(map);   
         startPoint.bindPopup('<b>Click point: </b>' + '<br>' +data[1] + ', ' + data[0] + '</br>').openPopup();
     }
-
+// If the query is for data inported from a json file...
     else if (processing_json) {
         // console.log('poly_coords;', poly_coords);
         var data = JSON.stringify(poly_coords);
@@ -619,12 +622,14 @@ function delineatePoint(e) {
             lnglat: data,
             query_polygon: query_polygon,
             getUpstream: getUpstream,
-            getFlowlines: getFlowlines
+            getFlowlines: getFlowlines,
+            downstream_dist: downstream_dist
         }
     }
 
     else {
         console.log('poly_coords;', typeof(poly_coords), poly_coords);
+        console.log('downstream_dist,', downstream_dist);
         var data = '[['+ poly_coords.join('],[') + ']]' //[].concat.apply([], poly_coords);
         // data = data.join();
         console.log('data:', data, typeof(data));
@@ -633,7 +638,8 @@ function delineatePoint(e) {
             lnglat: data,
             query_polygon: query_polygon,
             getUpstream: getUpstream,
-            getFlowlines: getFlowlines
+            getFlowlines: getFlowlines,
+            downstream_dist: downstream_dist
         }
     }
 

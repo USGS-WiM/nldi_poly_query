@@ -164,7 +164,7 @@ def get_local_flowline(catchmentIdentifier):
     return flowline, nhdFlowline
 # return flowline, nhdFlowline
 
-def get_local_flowlines(catchmentIdentifiers, returnGeom, *dist):
+def get_local_flowlines(catchmentIdentifiers, returnGeom, dist):
     """Request NDH Flowlines from NLDI with Catchment ID"""
 
     catchmentIdentifiers = tuple(catchmentIdentifiers)
@@ -207,11 +207,12 @@ def get_local_flowlines(catchmentIdentifiers, returnGeom, *dist):
 
     if dist:
         payload = {'f': 'json', 'distance': dist}
+
         flowlines = {'type': 'FeatureCollection', 'features': []}
         for id in outlets:
             # request  flowline geometry from point in polygon query from NLDI geoserver
             r = get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
-            
+            print('r.url:', r.url)
             downstreamflowlines = r.json()
             if returnGeom:
                 for feature in downstreamflowlines['features']:
@@ -222,7 +223,8 @@ def get_local_flowlines(catchmentIdentifiers, returnGeom, *dist):
     if returnGeom:
         return flowlines, downstreamflowlines, flowlinesGeom
     else:
-        return flowlines, downstreamflowlines
+        flowlinesGeom = None
+        return flowlines, downstreamflowlines, flowlinesGeom
 # return flowlines, nhdFlowline
 
 

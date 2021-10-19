@@ -1,6 +1,7 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
+import requests
 # import requests
 from .nldi_flowtools import flowtrace, splitcatchment, poly_query
 from distutils import util
@@ -22,7 +23,7 @@ def main():
 
     tic = time.perf_counter()
     polygon_query = bool(util.strtobool(request.args.get('query_polygon')))
-    returnGeoms = True
+    returnGeoms = False
 
     if polygon_query == False:
         lat = float(request.args.get('lat'))
@@ -48,15 +49,10 @@ def main():
         getUpstream =  bool(util.strtobool(request.args.get('getUpstream')))
         getFlowlines =  bool(util.strtobool(request.args.get('getFlowlines')))
         lnglat = request.args.get('lnglat')
-        # print('lnglat:', lnglat)
         lnglat = json.loads(lnglat)
-        # lnglat = lnglat.split(',')
-        # p_list = []
-        # for num in lnglat:
-        #     p_list.append(float(num))
-        # print('unstrung lnglat', lnglat, type(lnglat))
-        results = poly_query(lnglat, getUpstream, getFlowlines, returnGeoms)
-        # print('polygon results:', results)
+        downstream_dist = request.args.get('downstream_dist')
+        
+        results = poly_query(lnglat, getUpstream, getFlowlines, downstream_dist, returnGeoms)
 
     # print("results: ", type(results) , results)
 

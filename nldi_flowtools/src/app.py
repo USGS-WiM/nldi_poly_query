@@ -23,7 +23,7 @@ def main():
 
     tic = time.perf_counter()
     polygon_query = bool(util.strtobool(request.args.get('query_polygon')))
-    returnGeoms = False
+    returnGeoms = True
 
     if polygon_query == False:
         lat = float(request.args.get('lat'))
@@ -46,13 +46,11 @@ def main():
     ############### Polygon Query ############# 
     if polygon_query == True:
         print('Running app.py')
-        getUpstream =  bool(util.strtobool(request.args.get('getUpstream')))
         getFlowlines =  bool(util.strtobool(request.args.get('getFlowlines')))
         lnglat = request.args.get('lnglat')
         lnglat = json.loads(lnglat)
         downstream_dist = request.args.get('downstream_dist')
-        
-        results = poly_query(lnglat, getUpstream, getFlowlines, downstream_dist, returnGeoms)
+        results = poly_query(lnglat, getFlowlines, downstream_dist, returnGeoms)
 
     # print("results: ", type(results) , results)
 

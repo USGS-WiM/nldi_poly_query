@@ -1,8 +1,6 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
-import requests
-# import requests
 from .nldi_flowtools import flowtrace, splitcatchment, poly_query
 from distutils import util
 import time

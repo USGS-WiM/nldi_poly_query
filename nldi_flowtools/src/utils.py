@@ -6,7 +6,7 @@ import pyproj
 from pyproj import Geod
 from shapely.ops import transform, split, snap
 import shapely.geometry
-from shapely.geometry import shape, mapping, Point, GeometryCollection, LineString, MultiLineString, Polygon
+from shapely.geometry import shape, mapping, Point, GeometryCollection, LineString, MultiLineString, Polygon, MultiPolygon
 import json
 import numpy as np
 import math
@@ -63,8 +63,20 @@ def get_local_catchment(x, y):
     catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
 
     # get main catchment geometry polygon
-    features = resp['features']
-    catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+    # features = resp['features']
+    # catchmentGeom = Polygon(features[0]["geometry"]['coordinates'][0][0])
+
+    features = resp['features'][0]
+    if len(features["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
+        r = 0
+        catchmentGeom = []
+        while r < len(features["geometry"]['coordinates']):
+            print('Multipolygon catchment found:', json.dumps(features['properties']['featureid']))
+            catchmentGeom.append(Polygon(features["geometry"]['coordinates'][r][0]))
+            r += 1
+        catchmentGeom = MultiPolygon(catchmentGeom)
+    else:       # Else, the catchment is a single polygon (as it should be)
+        catchmentGeom = Polygon(features["geometry"]['coordinates'][0][0])
 
     print('got local catchment:', catchmentIdentifier)
     return catchmentIdentifier, catchmentGeom
@@ -96,8 +108,8 @@ def get_local_flowlines(catchmentIdentifier):
 
     # Convert the flowline to a geometry colelction to be exported
     nhdGeom = flowlines['features'][0]['geometry']
-    nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
-    nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
+    nhdFlowline = GeometryCollection([shape(nhdGeom)]).geoms[0]
+    nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline.geoms[0].coords)])  # Convert xyz to xy
 
     return flowlines, nhdFlowline
 # return flowlines, nhdFlowline
@@ -389,7 +401,7 @@ def get_raindropPath(flw, projected_xy, nhdFlowline, flowlines, transformToRaste
     projectedPathGeom = transform(transformToWGS84, pathGeom)
 
     # Snap raindropPath points to the flowline within a ~35m buffer
-    snapPath = snap(projectedPathGeom[0], nhdFlowline, .00045)
+    snapPath = snap(projectedPathGeom.geoms[0], nhdFlowline, .00045)
 
     # Convert snapPath to a geometry collection
     snapPath = GeometryCollection([snapPath])
@@ -402,22 +414,22 @@ def get_raindropPath(flw, projected_xy, nhdFlowline, flowlines, transformToRaste
     if type(intersectionpoints) == shapely.geometry.multipoint.MultiPoint:
         for i in intersectionpoints:
             splitPoint = snap(Point(i.coords), snapPath, .0002)
-            snapPath = split(snapPath[0], splitPoint)
+            snapPath = split(snapPath.geoms[0], splitPoint)
     if type(intersectionpoints) == shapely.geometry.linestring.LineString:
         for i in intersectionpoints.coords:
             splitPoint = snap(Point(i), snapPath, .0002)
-            snapPath = split(snapPath[0], splitPoint)
+            snapPath = split(snapPath.geoms[0], splitPoint)
     if type(intersectionpoints) == shapely.geometry.point.Point:
         splitPoint = snap(intersectionpoints, snapPath, .0002)
-        snapPath = split(snapPath[0], splitPoint)
+        snapPath = split(snapPath.geoms[0], splitPoint)
     if type(intersectionpoints) == shapely.geometry.multilinestring.MultiLineString or type(intersectionpoints) == shapely.geometry.collection.GeometryCollection:
         for i in intersectionpoints:
             for j in i.coords:
                 splitPoint = snap(Point(j), snapPath, .0002)
-                snapPath = split(snapPath[0], splitPoint)
+                snapPath = split(snapPath.geoms[0], splitPoint)
 
     # The first linestring in the snapPath geometry collection in the raindropPath
-    raindropPath = snapPath[0]
+    raindropPath = snapPath.geoms[0]
 
     return raindropPath
 # return raindropPath
@@ -449,7 +461,7 @@ def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
 
     # Convert the flowline to a geometry colelction to be exported
     nhdGeom = flowlines['features'][0]['geometry']
-    nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
+    nhdFlowline = GeometryCollection([shape(nhdGeom)]).geoms[0]
 
     # Select the stream name from the NHD Flowline
     streamname = flowlines['features'][0]['properties']['gnis_name']
@@ -477,9 +489,12 @@ def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
         NHDFlowlinesCut = split(nhdFlowline, buffIntersectionPoint)
 
     # If the NHD Flowline was split, then calculate measure
-    try:
-        NHDFlowlinesCut[1]
-    except AssertionError as error:  # If NHDFlowline was not split, then the intersectionPoint is either the first or last point on the NHDFlowline
+    if len(NHDFlowlinesCut.geoms) > 1:
+        lastLineID = len(NHDFlowlinesCut.geoms) - 1
+        distToOutlet = round(geod.geometry_length(NHDFlowlinesCut.geoms[lastLineID]), 2)
+        flowlineLength = round(geod.geometry_length(nhdFlowline), 2)
+        streamInfo['measure'] = round((distToOutlet/flowlineLength) * 100, 2)
+    else:  # If NHDFlowline was not split, then the intersectionPoint is either the first or last point on the NHDFlowline
         startPoint = Point(nhdFlowline[0].coords[0][0], nhdFlowline[0].coords[0][1])
         lastPointID = len(nhdFlowline[0].coords) - 1
         lastPoint = Point(nhdFlowline[0].coords[lastPointID][0], nhdFlowline[0].coords[lastPointID][1])
@@ -493,11 +508,7 @@ def get_reachMeasure(intersectionPoint, flowlines, *raindropPath):
             error = 'Error: NHD Flowline measure not calculated'
             streamInfo['measure'] = 'null'
         print(error)
-    else:
-        lastLineID = len(NHDFlowlinesCut) - 1
-        distToOutlet = round(geod.geometry_length(NHDFlowlinesCut[lastLineID]), 2)
-        flowlineLength = round(geod.geometry_length(nhdFlowline), 2)
-        streamInfo['measure'] = round((distToOutlet/flowlineLength) * 100, 2)
+   
     print('calculated measure and reach')
 
     return streamInfo
@@ -508,8 +519,8 @@ def split_flowline(intersectionPoint, flowlines):
 
     # Convert the flowline to a geometry colelction to be exported
     nhdGeom = flowlines['features'][0]['geometry']
-    nhdFlowline = GeometryCollection([shape(nhdGeom)])[0]
-    nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline[0].coords)])  # Convert xyz to xy
+    nhdFlowline = GeometryCollection([shape(nhdGeom)]).geoms[0]
+    nhdFlowline = LineString([xy[0:2] for xy in list(nhdFlowline.geoms[0].coords)])  # Convert xyz to xy
 
     # If the intersectionPoint is on the NHD Flowline, split the flowline at the point
     if nhdFlowline.intersects(intersectionPoint) is True:
@@ -522,9 +533,12 @@ def split_flowline(intersectionPoint, flowlines):
         NHDFlowlinesCut = split(nhdFlowline, buffIntersectionPoint)
 
     # If the NHD Flowline was split, then calculate measure
-    try:
-        NHDFlowlinesCut[1]
-    except AssertionError as error:  # If NHDFlowline was not split, then the intersectionPoint is either the first or last point on the NHDFlowline
+    if len(NHDFlowlinesCut.geoms) > 1:
+        lastLineID = len(NHDFlowlinesCut.geoms) - 1
+        upstreamFlowline = NHDFlowlinesCut.geoms[0]
+        downstreamFlowline = NHDFlowlinesCut.geoms[lastLineID]
+
+    else:  # If NHDFlowline was not split, then the intersectionPoint is either the first or last point on the NHDFlowline
         startPoint = Point(nhdFlowline[0].coords[0][0], nhdFlowline[0].coords[0][1])
         lastPointID = len(nhdFlowline[0].coords) - 1
         lastPoint = Point(nhdFlowline[0].coords[lastPointID][0], nhdFlowline[0].coords[lastPointID][1])
@@ -541,10 +555,7 @@ def split_flowline(intersectionPoint, flowlines):
             downstreamFlowline = GeometryCollection()
             upstreamFlowline = GeometryCollection()
         print(error)
-    else:
-        lastLineID = len(NHDFlowlinesCut) - 1
-        upstreamFlowline = NHDFlowlinesCut[0]
-        downstreamFlowline = NHDFlowlinesCut[lastLineID]
+        
     print('split NHD Flowline')
 
     return upstreamFlowline, downstreamFlowline

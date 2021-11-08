@@ -1,5 +1,5 @@
 
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask_cors import CORS, cross_origin
 from .nldi_flowtools import flowtrace, splitcatchment
 from distutils import util
@@ -22,18 +22,15 @@ def main():
     runsplitcatchment = request.args.get('runsplitcatchment')
     truefalse = bool(util.strtobool(request.args.get('truefalse')))
     direction = request.args.get('direction')
-    print("lat:", lat, 'lng:', lng, 'runsplitcatchment:', runsplitcatchment, 'trueflase:', truefalse, 'direction:', direction)
 
     
 ############# Splitcatchment ##############
     if runsplitcatchment == 'true':
         results = splitcatchment(lng, lat, truefalse)
-        print('splitcatchment results:', results)
 
 ############### Flowtrace ###############
     if runsplitcatchment == 'false':
         results = flowtrace(lng, lat, truefalse, direction)
-        print('flowtrace results:', results)
 
     # print("results: ", type(results) , results)
     return results

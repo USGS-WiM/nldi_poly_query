@@ -6,9 +6,10 @@ from pyproj import Geod, CRS, Transformer
 from rasterio import open, features
 import rasterio.mask
 from requests import get
+from requests.api import request
 from shapely.geometry import shape, mapping, Point, GeometryCollection, LineString, MultiLineString, Polygon, MultiPoint, MultiPolygon
 from shapely.ops import transform, split, snap, unary_union
-
+import sys
 
 # arguments
 NLDI_URL = 'https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/'
@@ -52,15 +53,27 @@ def get_local_catchment(x, y):
         'CQL_FILTER': cql_filter
     }
  
-    # request catchment geometry from point in polygon query from NLDI geoserver
-    r = get(NLDI_GEOSERVER_URL, params=payload)
- 
-    resp = r.json()
+    # Try to request catchment geometry from point in polygon query from NLDI geoserver
+    try:
+        r = get(NLDI_GEOSERVER_URL, params=payload)
+        # Convert response to json
+        resp = r.json()
 
-    # get catchment id
+    # If request fails or can't be converted to json, something's up
+    except:
+        if r.status_code == 200:
+            print('Get local catchment request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+
+        else:
+            print('Quiting nldi_flowtools query. Error requesting catchment from Geoserver:', r.exceptions.HTTPError)
+
+        # Kill program if request fails.
+        sys.exit(1)
+
+    # Get catchment ID
     catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
 
-    # get main catchment geometry polygon
+    # get main catchment geometry polygon 
     features = resp['features'][0]
     if len(features["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
         r = 0
@@ -104,11 +117,23 @@ def get_local_catchments(coords):
         'CQL_FILTER': cql_filter
     }
 
-    # request catchment geometry from point in polygon query from NLDI geoserver
-    r = get(NLDI_GEOSERVER_URL, params=payload)
-    print('request_url:', r.url)
-    resp = r.json()
-    
+    # Try to request catchment geometry from polygon query from NLDI geoserver
+    try:
+        r = get(NLDI_GEOSERVER_URL, params=payload)
+        # Convert response to json
+        resp = r.json()
+
+    # If request fails or can't be converted to json, something's up
+    except:
+        if r.status_code == 200:
+            print('Get local catchments request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+
+        else:
+            print('Quiting nldi_flowtools query. Error requesting catchment from Geoserver:', r.exceptions.HTTPError)
+
+        # Kill program if request fails.
+        sys.exit(1)
+
     features = resp['features']
     print('# of catchments', len(features)) 
 
@@ -151,9 +176,23 @@ def get_local_flowline(catchmentIdentifier):
         'CQL_FILTER': cql_filter
     }
 
-    # request  flowline geometry from point in polygon query from NLDI geoserver
-    r = get(NLDI_GEOSERVER_URL, params=payload)
-    flowline = r.json()
+    # Try to request flowline geometry from catchment ID from NLDI geoserver
+    try:
+        r = get(NLDI_GEOSERVER_URL, params=payload)
+        # Convert response to json
+        flowline = r.json()
+
+    # If request fails or can't be converted to json, something's up
+    except:
+        if r.status_code == 200:
+            print('Get local flowline request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+
+        else:
+            print('Quiting nldi_flowtools query. Error requesting flowline from Geoserver:', r.exceptions.HTTPError)
+
+        # Kill program if request fails.
+        sys.exit(1)
+
     print('got local flowline')
 
     # Convert the flowline to a geometry colelction to be exported
@@ -189,11 +228,24 @@ def get_local_flowlines(catchmentIdentifiers, returnGeom, dist):
             'srsName': 'EPSG:4326',
             'CQL_FILTER': cql_filter
         }
-        r = get(NLDI_GEOSERVER_URL, params=payload)
-        print('request url:', r.url)
-        print('response code:', r.status_code)
-        r.status_code
-        flowlines = r.json()
+
+        # Try to request flowline geometry from catchment ID from NLDI geoserver
+        try:
+            r = get(NLDI_GEOSERVER_URL, params=payload)
+            # Convert response to json
+            flowlines = r.json()
+
+        # If request fails or can't be converted to json, something's up
+        except:
+            if r.status_code == 200:
+                print('Get local flowlines request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+
+            else:
+                print('Quiting nldi_flowtools query. Error requesting flowlines from Geoserver:', r.exceptions.HTTPError)
+
+            # Kill program if request fails.
+            sys.exit(1)
+
         print('got flowlines')
 
         # Convert the flowline to a geometry collection to be exported

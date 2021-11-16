@@ -4,11 +4,10 @@ from shapely.geometry import MultiPolygon
 
 class Poly_Query:
 
-    def __init__(self, coords=list, get_flowlines=bool, downstream_dist=int, returnGeoms=bool):
+    def __init__(self, coords=list, get_flowlines=bool, downstream_dist=int):
         self.coords = coords
         self.get_flowlines = get_flowlines
         self.downstream_dist = downstream_dist
-        self.returnGeoms = returnGeoms
         self.catchmentIDs = None 
         self.catchmentGeom = None
         self.totalBasinGeoms = []
@@ -19,20 +18,19 @@ class Poly_Query:
 
         self.run()
 
-    def serialize(self):
-        if self.returnGeoms:    
-            catchments = geom_to_geojson(self.catchmentGeom)
-            feature1 = Feature(geometry=catchments, id='catchment', properties={'catchmentID': self.catchmentIDs})
+    def serialize(self):   
+        catchments = geom_to_geojson(self.catchmentGeom)
+        feature1 = Feature(geometry=catchments, id='catchment', properties={'catchmentID': self.catchmentIDs})
 
-            if self.get_flowlines is True:
-                flowlines = geom_to_geojson(self.flowlinesGeom)
-                feature3 = Feature(geometry=flowlines, id='flowlinesGeom')
-                featurecollection = FeatureCollection([feature1, feature3])
+        if self.get_flowlines is True:
+            flowlines = geom_to_geojson(self.flowlinesGeom)
+            feature3 = Feature(geometry=flowlines, id='flowlinesGeom')
+            featurecollection = FeatureCollection([feature1, feature3])
 
-            if self.get_flowlines is False:
-                featurecollection = FeatureCollection([feature1])
-                
-            return featurecollection
+        if self.get_flowlines is False:
+            featurecollection = FeatureCollection([feature1])
+            
+        return featurecollection
 
     def run(self):
         print('Running poly_query.py')
@@ -59,19 +57,19 @@ class Poly_Query:
                     self.catchmentIDs.extend(get_local_catchments(x[0])[0])
                     self.catchmentGeom.extend(get_local_catchments(x[0])[1])
             # print('self.catchmentGeom:', self.catchmentGeom)
-            if self.returnGeoms:
-                x = 0
-                polygons = []
-                while x < len( self.catchmentGeom):
-                    polygons.append( self.catchmentGeom[x])
-                    x +=1
-                self.catchmentGeom = MultiPolygon(polygons)
+            
+            x = 0
+            polygons = []
+            while x < len( self.catchmentGeom):
+                polygons.append( self.catchmentGeom[x])
+                x +=1
+            self.catchmentGeom = MultiPolygon(polygons)
 
         ############################################# Get only flowlines ######################################
         if self.get_flowlines is True:
             print('Getting flowlines')
             # Get all flowlines
-            self.flowlines, self.downstreamflowlines, self.flowlinesGeom = get_local_flowlines(self.catchmentIDs, self.returnGeoms, self.downstream_dist)
+            self.flowlines, self.downstreamflowlines, self.flowlinesGeom = get_local_flowlines(self.catchmentIDs, self.downstream_dist)
             
         ####################################### Get no features ##################################################
         if self.get_flowlines is False:

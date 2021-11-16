@@ -59,6 +59,9 @@ def get_local_catchment(x, y):
         # Convert response to json
         resp = r.json()
 
+        # Get catchment ID
+        catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
+
     # If request fails or can't be converted to json, something's up
     except:
         if r.status_code == 200:
@@ -69,9 +72,6 @@ def get_local_catchment(x, y):
 
         # Kill program if request fails.
         sys.exit(1)
-
-    # Get catchment ID
-    catchmentIdentifier = json.dumps(resp['features'][0]['properties']['featureid'])
 
     # get main catchment geometry polygon 
     features = resp['features'][0]
@@ -203,7 +203,7 @@ def get_local_flowline(catchmentIdentifier):
     return flowline, nhdFlowline
 # return flowline, nhdFlowline
 
-def get_local_flowlines(catchmentIdentifiers, returnGeom, dist):
+def get_local_flowlines(catchmentIdentifiers, dist):
     """Request NDH Flowlines from NLDI with Catchment ID"""
 
     print('# of catchment IDs:', len(catchmentIdentifiers))
@@ -229,7 +229,7 @@ def get_local_flowlines(catchmentIdentifiers, returnGeom, dist):
             'CQL_FILTER': cql_filter
         }
 
-        # Try to request flowline geometry from catchment ID from NLDI geoserver
+        # Try to request flowlines geometry from catchment ID from NLDI geoserver
         try:
             r = get(NLDI_GEOSERVER_URL, params=payload)
             # Convert response to json
@@ -249,11 +249,9 @@ def get_local_flowlines(catchmentIdentifiers, returnGeom, dist):
         print('got flowlines')
 
         # Convert the flowline to a geometry collection to be exported
-        if returnGeom:
-            
-            for feature in flowlines['features']:
-                for coords in feature['geometry']['coordinates']:
-                    nhdGeom.append([coord[0:2] for coord in coords])
+        for feature in flowlines['features']:
+            for coords in feature['geometry']['coordinates']:
+                nhdGeom.append([coord[0:2] for coord in coords])
     
     # Get from and to nodes
     fromnode_list = []
@@ -265,30 +263,37 @@ def get_local_flowlines(catchmentIdentifiers, returnGeom, dist):
     outlets = find_out_flowline(tonode_list, fromnode_list)
 
     if not dist:
-        if returnGeom:
-            flowlinesGeom = MultiLineString(nhdGeom)
+        flowlinesGeom = MultiLineString(nhdGeom)
 
     if dist:
         payload = {'f': 'json', 'distance': dist}
 
         flowlines = {'type': 'FeatureCollection', 'features': []}
         for id in outlets:
-            # request  flowline geometry from point in polygon query from NLDI geoserver
-            r = get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
-            print('r.url:', r.url)
-            downstreamflowlines = r.json()
-            if returnGeom:
+            # request downstream flowlines geometry NLDI
+            try:
+                r = get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
+                # print('r.url:', r.url)
+                downstreamflowlines = r.json()
                 for feature in downstreamflowlines['features']:
                     nhdGeom.append(feature['geometry']['coordinates'])
-        if returnGeom:
-            flowlinesGeom = MultiLineString(nhdGeom)
+            except:
+                if r.status_code == 200:
+                    print('Get local flowlines request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+
+                else:
+                    print('Quiting nldi_flowtools query. Error requesting flowlines from Geoserver:', r.exceptions.HTTPError)
+
+                # Kill program if request fails.
+                sys.exit(1)
+
+
+        flowlinesGeom = MultiLineString(nhdGeom)
         print('got trace downstream flowline')
-    if returnGeom:
-        return flowlines, downstreamflowlines, flowlinesGeom
-    else:
-        flowlinesGeom = None
-        return flowlines, downstreamflowlines, flowlinesGeom
-# return flowlines, nhdFlowline
+
+    return flowlines, downstreamflowlines, flowlinesGeom
+    
+# return flowlines, downstreamflowlines, flowlinesGeom
 
 
 def get_total_basin(catchmentIdentifier):
@@ -300,13 +305,24 @@ def get_total_basin(catchmentIdentifier):
     payload = {'f': 'json', 'simplified': 'false'}
 
     # request upstream basin from NLDI using comid of catchment point is in
-    r = get(NLDI_URL + catchmentIdentifier + '/basin', params=payload)
+    try:
+        r = get(NLDI_URL + catchmentIdentifier + '/basin', params=payload)
 
-    resp = r.json()
+        resp = r.json()
 
-    # convert geojson to ogr geom
-    features = resp['features']
-    totalBasinGeom = GeometryCollection([shape(feature["geometry"]).buffer(0) for feature in features])
+        # convert geojson to ogr geom
+        features = resp['features']
+        totalBasinGeom = GeometryCollection([shape(feature["geometry"]).buffer(0) for feature in features])
+    
+    except:
+        if r.status_code == 200:
+            print('Get upstream basin request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+
+        else:
+            print('Quiting nldi_flowtools query. Error requesting upstream basin from the NLDI:', r.exceptions.HTTPError)
+
+        # Kill program if request fails.
+        sys.exit(1)
 
     print('finished getting upstream basin')
     return totalBasinGeom

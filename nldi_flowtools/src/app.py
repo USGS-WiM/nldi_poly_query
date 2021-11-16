@@ -21,7 +21,6 @@ def main():
 
     tic = time.perf_counter()
     polygon_query = bool(util.strtobool(request.args.get('query_polygon')))
-    returnGeoms = True
 
     if polygon_query == False:
         lat = float(request.args.get('lat'))
@@ -48,7 +47,7 @@ def main():
         lnglat = request.args.get('lnglat')
         lnglat = json.loads(lnglat)
         downstream_dist = request.args.get('downstream_dist')
-        results = poly_query(lnglat, getFlowlines, downstream_dist, returnGeoms)
+        results = poly_query(lnglat, getFlowlines, downstream_dist)
 
     # print("results: ", type(results) , results)
 

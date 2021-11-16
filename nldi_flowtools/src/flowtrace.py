@@ -1,4 +1,4 @@
-from .utils import geom_to_geojson, get_local_catchment, get_local_flowlines, get_coordsys, \
+from .utils import geom_to_geojson, get_local_catchment, get_local_flowline, get_coordsys, \
     project_point, get_flowgrid, get_onFlowline, get_raindropPath, get_intersectionPoint, get_reachMeasure, \
     split_flowline
 import geojson
@@ -15,7 +15,7 @@ class Flowtrace:
         self.raindropTrace = raindropTrace
         self.direction = direction
         self.catchmentIdentifier = None
-        self.flowlines = None
+        self.flowline = None
         self.flw = None
         self.flwdir_transform = None
         self.projected_xy = None
@@ -106,17 +106,17 @@ class Flowtrace:
     def run(self):
         # Order of these functions is important!
         self.catchmentIdentifier, self.catchmentGeom = get_local_catchment(self.x, self.y)
-        self.flowlines, self.nhdFlowlineGeom = get_local_flowlines(self.catchmentIdentifier)
+        self.flowline, self.nhdFlowlineGeom = get_local_flowline(self.catchmentIdentifier)
         self.transformToRaster, self.transformToWGS84 = get_coordsys()
         self.projected_xy = project_point(self.x, self.y, self.transformToRaster)
         self.flw, self.flwdir_transform = get_flowgrid(self.catchmentGeom, self.transformToRaster)
-        self.onFlowline = get_onFlowline(self.projected_xy, self.flowlines, self.transformToRaster)
+        self.onFlowline = get_onFlowline(self.projected_xy, self.flowline, self.transformToRaster)
         self.catchment = geom_to_geojson(self.catchmentGeom)
 
         if self.onFlowline is True:
             self.intersectionPointGeom = get_intersectionPoint(self.x, self.y, self.onFlowline)
-            self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowlines)
-            self.upstreamFlowlineGeom, self.downstreamFlowlineGeom = split_flowline(self.intersectionPointGeom, self.flowlines)
+            self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowline)
+            self.upstreamFlowlineGeom, self.downstreamFlowlineGeom = split_flowline(self.intersectionPointGeom, self.flowline)
 
             # Outputs
             if self.direction == 'up':
@@ -129,10 +129,10 @@ class Flowtrace:
                 self.nhdFlowline = geom_to_geojson(self.nhdFlowlineGeom)
 
         if self.onFlowline is False:
-            self.raindropPathGeom = get_raindropPath(self.flw, self.projected_xy,  self.nhdFlowlineGeom, self.flowlines, self.transformToRaster, self.transformToWGS84)
+            self.raindropPathGeom = get_raindropPath(self.flw, self.projected_xy,  self.nhdFlowlineGeom, self.flowline, self.transformToRaster, self.transformToWGS84)
             self.intersectionPointGeom = get_intersectionPoint(self.x, self.y, self.onFlowline, self.raindropPathGeom)
-            # self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowlines)
-            self.upstreamFlowlineGeom, self.downstreamFlowlineGeom = split_flowline(self.intersectionPointGeom, self.flowlines)
+            # self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowline)
+            self.upstreamFlowlineGeom, self.downstreamFlowlineGeom = split_flowline(self.intersectionPointGeom, self.flowline)
 
             # Outputs
             if self.direction == 'up' and self.raindropTrace is True:
@@ -159,9 +159,9 @@ class Flowtrace:
                 self.nhdFlowline = geom_to_geojson(self.nhdFlowlineGeom)
 
             if self.raindropTrace is True:
-                self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowlines, self.raindropPathGeom)
+                self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowline, self.raindropPathGeom)
             if self.raindropTrace is False:
-                self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowlines)
+                self.streamInfo = get_reachMeasure(self.intersectionPointGeom, self.flowline)
 
         # self.intersectionPoint = geom_to_geojson(self.intersectionPointGeom)
 # print('featurecollection', type(featurecollection))

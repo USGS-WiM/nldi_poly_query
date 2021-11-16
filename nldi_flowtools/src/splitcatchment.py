@@ -1,4 +1,4 @@
-from .utils import geom_to_geojson, get_local_catchment, get_local_flowlines, get_coordsys, \
+from .utils import geom_to_geojson, get_local_catchment, get_local_flowline, get_coordsys, \
     project_point, get_total_basin, split_catchment, get_onFlowline, get_upstream_basin, merge_geometry
 import geojson
 
@@ -12,7 +12,7 @@ class SplitCatchment:
         self.x = x
         self.y = y
         self.catchmentIdentifier = None
-        self.flowlines = None
+        self.flowline = None
         self.flw = None
         self.flwdir_transform = None
         self.projected_xy = None
@@ -69,11 +69,11 @@ class SplitCatchment:
     def run(self):
         # Order of these functions is important!
         self.catchmentIdentifier, self.catchmentGeom = get_local_catchment(self.x, self.y)
-        self.flowlines, self.nhdFlowlineGeom = get_local_flowlines(self.catchmentIdentifier)
+        self.flowline, self.nhdFlowlineGeom = get_local_flowline(self.catchmentIdentifier)
         self.transformToRaster, self.transformToWGS84 = get_coordsys()
         self.projected_xy = project_point(self.x, self.y, self.transformToRaster)
         self.splitCatchmentGeom = split_catchment(self.catchmentGeom, self.projected_xy, self.transformToRaster, self.transformToWGS84)
-        self.onFlowline = get_onFlowline(self.projected_xy, self.flowlines, self.transformToRaster)
+        self.onFlowline = get_onFlowline(self.projected_xy, self.flowline, self.transformToRaster)
         self.catchment = geom_to_geojson(self.catchmentGeom)
 
         # outputs

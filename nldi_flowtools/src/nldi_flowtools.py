@@ -1,6 +1,6 @@
-from flowtrace import Flowtrace
-from splitcatchment import SplitCatchment
-from poly_query import Poly_Query
+from .flowtrace import Flowtrace
+from .splitcatchment import SplitCatchment
+from .poly_query import Poly_Query
 
 
 

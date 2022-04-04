@@ -1,4 +1,4 @@
-from utils import geom_to_geojson, get_local_catchment, get_local_flowline, get_coordsys, \
+from .utils import geom_to_geojson, get_local_catchment, get_local_flowline, get_coordsys, \
     project_point, get_flowgrid, get_onFlowline, get_raindropPath, get_intersectionPoint, get_reachMeasure, \
     split_flowline
 from geojson import Feature, FeatureCollection

@@ -106,14 +106,14 @@ var layerControl;
 var loadingToast;
 var startTime;
 var runsplitcatchment = true;
-var query_polygon = false;
+var query_polygon = true;
 var getFlowlines = 'True';
 var runxstool = false;
 var truefalse = 'True';
 var direction = 'down';
 var payload;
 var poly_coords;
-var processing_json = false;
+var processing_json = true;
 var downstream_dist = 0;
 
 //main document ready function
@@ -143,74 +143,6 @@ $(document).ready(function () {
         zoomControl: false
 	}); 
 
-    var flowtoolsButton = L.easyButton(
-        {
-            states: [{
-                stateName: 'flowtools_off',        // name the state
-                icon:      '<strong>On</strong>',               // and define its properties
-                title:     'Flowtools off',      // like its title
-                onClick: function(control) {       // and its callback
-                    control.state('flowtools_on');
-                    map.off('click', delineatePoint);
-                }
-            }, {
-                stateName: 'flowtools_on',
-                icon:      '<strong>Off</strong>',
-                title:     'Flowtools on',
-                onClick: function(control) {
-                    control.state('flowtools_off');
-                    map.on('click', delineatePoint);
-                }
-            }
-        ]
-    })
-
-    flowtoolsButton.addTo(map);
-
-    var shapeQueryButton = L.easyButton(
-        {
-            states: [{
-                stateName: 'point',
-                icon:       '<strong>Point</strong>',
-                title:      'Point Query',
-                onClick: function(control) {
-                    control.state('polygon');
-                    map.off('click', delineatePoint);
-                    query_polygon = true;
-                    functionButton.remove(map);
-                    truefalseButton.remove(map);
-                    getFlowlinesButton.addTo(map);
-                    map.addControl(drawControl);
-                    slider.addTo(map);
-                    map.removeControl(searchbox);
-                    // point_submit.remove(map);
-                    poly_submit.addTo(map);
-                    // upload.addTo(map);
-                }
-            }, {
-                stateName: 'polygon',
-                icon:       '<strong>Polygon</strong>',
-                title:      'Polygon Query',
-                onClick: function(control) {
-                    control.state('point');
-                    map.on('click', delineatePoint);
-                    // point_submit.addTo(map);
-                    poly_submit.remove(map);
-                    query_polygon = false;
-                    functionButton.addTo(map);
-                    truefalseButton.addTo(map);
-                    map.removeControl(drawControl);
-                    map.addControl(searchbox);
-                    getFlowlinesButton.remove(map);
-                    slider.remove(map);
-                    // upload.remove(map);
-                }
-            }
-        ]
-    });
-    shapeQueryButton.button.style.width = '70px';
-    shapeQueryButton.addTo(map);
-
     var getFlowlinesButton = L.easyButton(
         {
             states: [{
@@ -236,6 +168,7 @@ $(document).ready(function () {
         }
     )
     getFlowlinesButton.button.style.width = '150px';
+    getFlowlinesButton.addTo(map);
 
     slider = L.control.slider(function(value) {
         // console.log('downstream_dist,', downstream_dist);
@@ -250,89 +183,7 @@ $(document).ready(function () {
             id:'slider',
             position:'topleft'
         });
-
-    var functionButton = L.easyButton(
-        {
-            states: [{
-                stateName: 'run-splitcatchment',        // name the state
-                icon:      '<strong>Splitcatchment</strong>',               // and define its properties
-                // title:     'Splitcatchment',      // like its title
-                onClick: function(control) {       // and its callback
-                    control.state('run-flowtrace');
-                    runsplitcatchment = false ;   // change state on click!
-                    directionButton.addTo(map);
-                    
-                }
-            }, {
-                stateName: 'run-flowtrace',
-                icon:      '<strong>Flowtrace</strong>',
-                // title:     'Flowtrace',
-                onClick: function(control) {
-                    control.state('run-splitcatchment');                    
-                    runsplitcatchment = true;
-                    directionButton.remove(map);
-                    // truefalseButton.remove(map);
-                }
-            }
-        ]
-    });
-    functionButton.button.style.width = '110px';
-    functionButton.addTo(map);
-
-    var truefalseButton = L.easyButton(
-        {
-            states: [{
-                stateName: 'true',        // name the state
-                icon:      '<strong>True</strong>',               // and define its properties
-                // title:     'True',      // like its title
-                onClick: function(control) {       // and its callback
-                    control.state('false');
-                    truefalse = 'False' ;   // change state on click!
-                }
-            }, {
-                stateName: 'false',
-                icon:      '<strong>False</strong>',
-                // title:     'False',
-                onClick: function(control) {
-                    control.state('true');
-                    truefalse = 'True';
-                }
-            }]
-    });
-    truefalseButton.button.style.width = '50px';
-    truefalseButton.addTo(map);
-
-    var directionButton = L.easyButton(
-        {
-            states: [{
-                stateName:  'down',
-                icon:       '<strong>Downstream</strong>',
-                // title:      'Downstream',
-                onClick: function(control) {
-                    control.state('up');
-                    direction = 'up';
-                }
-            },{
-                stateName:  'up',
-                icon:       '<strong>Upstream</strong>',
-                // title:      'Upstream',
-                onClick: function(control) {
-                    control.state('none');
-                    direction = 'none';
-                }
-            },{
-                stateName:  'none',
-                icon:       '<strong>Entire</strong>',
-                // title:      'Entire',
-                onClick: function(control) {
-                    control.state('down');
-                    direction = 'down';
-                }
-
-            }]
-
-    });
-    directionButton.button.style.width = '100px';
+        slider.addTo(map);
 
     var drawnItems = L.featureGroup().addTo(map);
 
@@ -437,6 +288,7 @@ $(document).ready(function () {
         }]
     });
     poly_submit.button.style.width = '70px';
+    poly_submit.addTo(map)
 
     var options = {
       position: 'topright',         // Leaflet control position option
@@ -484,9 +336,6 @@ $(document).ready(function () {
     features = L.featureGroup();
 
     map.on('zoomend', changeCursor );
-
-    //click listener for delineation start
-    map.on('click', delineatePoint)
     
     
 });
@@ -554,21 +403,7 @@ function delineatePoint(e) {
         layerControl.removeLayer(downstreamPath);
         map.removeLayer(downstreamPath)
     }
-// If the query is for a point...
-    if (e.latlng) {
-        var data =  {  
-            lat: e.latlng.lat,
-            lng: e.latlng.lng
-        };
-        var payload = {
-        lat: data.lat,
-        lng: data.lng,
-        query_polygon: query_polygon,
-        runsplitcatchment: runsplitcatchment,
-        truefalse: truefalse,
-        direction: direction,
-        }
-    }
+
 // If the query is for a drawn polygon...
     else if (typeof(e) == 'string') {
         var data = JSON.parse("[" + e + "]")
@@ -784,35 +619,8 @@ function delineatePoint(e) {
                 layerControl.addOverlay(mergedCatchment , "Merged Catchment");
             }
             
-                // if (res.intersectionPoint) {
-                //     //console.log('has intersectionPoint', res.intersectionPoint)
-                //     intersectionPoint = L.geoJson(res.intersectionPoint).addTo(map);
-                //     intersectionPoint.addTo(features)
-                //     layerControl.addOverlay(intersectionPoint , "Intersection Point");
 
-                //     intersectionPoint.bindPopup('<b>Stream name: </b>' + res.streamInfo.gnis_name +
-                //                             '<br><b>Comid: </b>' + res.streamInfo.comid + '</br>' +
-                //                             '<b>Reach Code: </b>' + res.streamInfo.reachcode +
-                //                             '<br><b>Measure: </b> 0:' + res.streamInfo.measure + '</br>' +
-                //                             '<b>Raindrop Path Length: </b>' + res.streamInfo.raindropPathDist + ' meters' +
-                //                             '<br><b>Intersection Point: </b>' + res.intersectionPoint.coordinates[1] + ', ' + res.intersectionPoint.coordinates[0] + '</br>').openPopup();
 
-                // }
-
-                if (res[1]['id'] == 'raindropPath') {
-                    // console.log('has raindropPath', res.raindropPath)
-                    raindropPath = L.geoJson(res[1]['geometry'], { style: function(feature) {
-                        return {
-                            fillColor: 'blue',
-                            weight: 2,
-                            opacity: 1,
-                            color: 'blue',  //Outline color
-                            fillOpacity: 0.2        
-                        }    
-                    }}).addTo(map);
-                    raindropPath.addTo(features)
-                    layerControl.addOverlay(raindropPath , "Raindrop Path");
-                }
 
                 if (res[1]['id'] == 'flowlinesGeom') {
                     //console.log('has nhdFlowline', res.nhdFlowline)

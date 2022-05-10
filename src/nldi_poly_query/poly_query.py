@@ -1,3 +1,4 @@
+from unittest import skip
 from .utils import geom_to_geojson, get_local_catchments, get_local_flowlines
 from geojson import Feature, FeatureCollection
 from shapely.geometry import MultiPolygon
@@ -63,15 +64,19 @@ class Poly_Query:
                 if type(x[0][0][0]) is list:
                     for y in x:
                         print('multi polygon')
-                        self.catchmentIDs.extend(get_local_catchments(y[0])[0])
-                        self.catchmentGeom.extend(get_local_catchments(y[0])[1])
+                        result = get_local_catchments(y[0])
+                        self.catchmentIDs.extend(result[0])
+                        self.catchmentGeom.extend(result[1])
+                        del result
                 else:
                     print('one of the multiple polygons')
-                    self.catchmentIDs.extend(get_local_catchments(x[0])[0])
-                    self.catchmentGeom.extend(get_local_catchments(x[0])[1])
-            
+                    result = get_local_catchments(x[0])
+                    self.catchmentIDs.extend(result[0])
+                    self.catchmentGeom.extend(result[1])
+                    del result
+
             x = 0
-            polygons = []
+            polygons = []  # Create a multipolygon geometry of all the catchments
             while x < len( self.catchmentGeom):
                 polygons.append( self.catchmentGeom[x])
                 x +=1
@@ -79,7 +84,7 @@ class Poly_Query:
         
         print('self.catchmentIDs', self.catchmentIDs)
 
-        ############################################# Get only flowlines ######################################
+        ############################################# Get flowlines ######################################
         if self.get_flowlines:
             print('Getting flowlines')
             # Get all flowlines

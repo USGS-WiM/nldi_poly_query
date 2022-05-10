@@ -34,12 +34,10 @@ def get_local_catchments(coords):
     ## If there are more than 237 points, the catchment query will not work
     # Convert coords to shapely geom
     if len(coords) > 237:
-        print('coords', coords)
-
-        poly = Polygon(coords)
+        poly = Polygon(coords).buffer(0)
         i = 0.000001
         while len(poly.exterior.coords) > 235:
-            poly = poly.simplify(i, preserve_topology=False)
+            poly = poly.simplify(i, preserve_topology=True)
             i += 0.000001
         # while len(coords) > 235:
         #     coords.pop(random.randrange(len(coords)))
@@ -47,7 +45,6 @@ def get_local_catchments(coords):
 
     else:
         poly = Polygon(coords)
-        print('coords', coords)
     
     cql_filter = f"INTERSECTS(the_geom, {poly.wkt})"
     print('requesting local catchments...')     
@@ -70,7 +67,6 @@ def get_local_catchments(coords):
 
     # If request fails or can't be converted to json, something's up
     except:
-        print('r.url:', r.url)
         if r.status_code == 200:
             print('Get local catchments request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
 
@@ -115,11 +111,12 @@ def get_local_flowlines(catchmentIdentifiers, dist):
 
     print('# of catchment IDs:', len(catchmentIdentifiers))
     nhdGeom = []
+    fromnode_list = []
+    tonode_list = {}
 
     # Request catchments 100 or less at a time
     for i in range(0, len(catchmentIdentifiers), 101):
         chunk = catchmentIdentifiers[i:i + 101]
-        print('chunk:', chunk)
                 
         catchmentids = tuple(chunk)
 
@@ -139,10 +136,9 @@ def get_local_flowlines(catchmentIdentifiers, dist):
         # Try to request flowlines geometry from catchment ID from NLDI geoserver
         try:
             r = requests.get(NLDI_GEOSERVER_URL, params=payload)
-            print('r.url:', r.url)
             # Convert response to json
             flowlines = r.json()
-            # print('flowlines:', flowlines)
+
         # If request fails or can't be converted to json, something's up
         except:
             if r.status_code == 200:
@@ -156,18 +152,14 @@ def get_local_flowlines(catchmentIdentifiers, dist):
 
         print('got flowlines')
 
-        # Convert the flowline to a geometry collection to be exported
         for feature in flowlines['features']:
+            # Get from and to nodes
+            fromnode_list.append(feature['properties']['fromnode'])
+            tonode_list[feature['properties']['comid']] = feature['properties']['tonode']
+            # Convert the flowline to a geometry collection to be exported
             for coords in feature['geometry']['coordinates']:
                 nhdGeom.append([coord[0:2] for coord in coords])
-    
-    # Get from and to nodes
-    fromnode_list = []
-    tonode_list = {}
-    for feature in flowlines['features']:
-        fromnode_list.append(feature['properties']['fromnode'])
-        tonode_list[feature['properties']['comid']] = feature['properties']['tonode']
-    # Find the outlet flowlines from the query polygon
+
     outlets = find_out_flowline(tonode_list, fromnode_list)
 
     if not dist:
@@ -181,7 +173,6 @@ def get_local_flowlines(catchmentIdentifiers, dist):
             # request downstream flowlines geometry NLDI
             try:
                 r = requests.get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
-                # print('r.url:', r.url)
                 downstreamflowlines = r.json()
                 for feature in downstreamflowlines['features']:
                     nhdGeom.append(feature['geometry']['coordinates'])

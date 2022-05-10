@@ -4,8 +4,8 @@ from shapely.geometry import MultiPolygon
 
 class Poly_Query:
 
-    def __init__(self, coords=list, get_flowlines=bool, downstream_dist=int):
-        self.coords = coords
+    def __init__(self, data=dict, get_flowlines=bool, downstream_dist=int):
+        self.data = data
         self.get_flowlines = get_flowlines
         self.downstream_dist = downstream_dist
         self.catchmentIDs = None 
@@ -35,18 +35,31 @@ class Poly_Query:
     def run(self):
         print('Running poly_query.py')
 
+        # Extract the individual polygons from the input geojson file
+        coords = []   # This will be a list of polygons
+        for d in self.data['features']:
+            if d['geometry']['type'] == 'Polygon':              # If its a polygon
+                if len(d['geometry']['coordinates']) == 1:      # Confirm that it is a polygon
+                    coords.append(d['geometry']['coordinates']) # And add it to the list of polygons
+                if len(d['geometry']['coordinates']) > 1:       # If its actually a multipolygon
+                    for c in d['geometry']['coordinates']:      # Loop thru it
+                        coords.append([c])                      # And add each polygon (as a list) tp the list
+            if d['geometry']['type'] == 'MultiPolygon':         # If its a multipolygon
+                for e in d['geometry']['coordinates']:          # Loop thru it 
+                    coords.append(e)                            # And add it to the list of polygons
+
         #################### Get the catchments that are overlapped by the polygon ########################       
         # If there is only one polygon to query
-        if not type(self.coords[0][0]) is list:
+        if len(coords) == 1:
             print('Single polygon query')
-            self.catchmentIDs, self.catchmentGeom = get_local_catchments(self.coords) 
+            self.catchmentIDs, self.catchmentGeom = get_local_catchments(coords[0][0]) 
         
         # If there is more than one polygon to query
-        if type(self.coords[0][0]) is list:
+        if len(coords) > 1:
             print('Multiple polygons query')
             self.catchmentIDs = []
             self.catchmentGeom = []
-            for x in self.coords:
+            for x in coords:
                 if type(x[0][0][0]) is list:
                     for y in x:
                         print('multi polygon')
@@ -56,7 +69,6 @@ class Poly_Query:
                     print('one of the multiple polygons')
                     self.catchmentIDs.extend(get_local_catchments(x[0])[0])
                     self.catchmentGeom.extend(get_local_catchments(x[0])[1])
-            # print('self.catchmentGeom:', self.catchmentGeom)
             
             x = 0
             polygons = []
@@ -64,13 +76,15 @@ class Poly_Query:
                 polygons.append( self.catchmentGeom[x])
                 x +=1
             self.catchmentGeom = MultiPolygon(polygons)
+        
+        print('self.catchmentIDs', self.catchmentIDs)
 
         ############################################# Get only flowlines ######################################
-        if self.get_flowlines is True:
+        if self.get_flowlines:
             print('Getting flowlines')
             # Get all flowlines
             self.flowlines, self.downstreamflowlines, self.flowlinesGeom = get_local_flowlines(self.catchmentIDs, self.downstream_dist)
             
         ####################################### Get no features ##################################################
-        if self.get_flowlines is False:
+        if not self.get_flowlines:
             pass 

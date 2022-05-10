@@ -1,5 +1,5 @@
 import json
-from requests import get
+import requests
 from shapely.geometry import mapping, MultiLineString, Polygon, MultiPolygon
 from shapely.ops import transform
 import sys, random
@@ -30,18 +30,24 @@ def transform_geom(proj, geom):
 
 def get_local_catchments(coords):
     """Perform polygon intersect query to NLDI geoserver to get local catchments"""
-    # # coords should be in json, like this: "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]]
     
     ## If there are more than 237 points, the catchment query will not work
     # Convert coords to shapely geom
     if len(coords) > 237:
-        while len(coords) > 237:
-            coords.pop(random.randrange(len(coords)))
+        print('coords', coords)
+
         poly = Polygon(coords)
-        # poly = p.simplify(0.00135, preserve_topology=False)
+        i = 0.000001
+        while len(poly.exterior.coords) > 235:
+            poly = poly.simplify(i, preserve_topology=False)
+            i += 0.000001
+        # while len(coords) > 235:
+        #     coords.pop(random.randrange(len(coords)))
+        # poly = Polygon(coords)
 
     else:
         poly = Polygon(coords)
+        print('coords', coords)
     
     cql_filter = f"INTERSECTS(the_geom, {poly.wkt})"
     print('requesting local catchments...')     
@@ -58,12 +64,13 @@ def get_local_catchments(coords):
 
     # Try to request catchment geometry from polygon query from NLDI geoserver
     try:
-        r = get(NLDI_GEOSERVER_URL, params=payload)
+        r = requests.get(NLDI_GEOSERVER_URL, params=payload)
         # Convert response to json
         resp = r.json()
 
     # If request fails or can't be converted to json, something's up
     except:
+        print('r.url:', r.url)
         if r.status_code == 200:
             print('Get local catchments request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
 
@@ -91,9 +98,13 @@ def get_local_catchments(coords):
             catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
         x += 1
     print('# of catchment geoms:', x )
-    # print('catchmentIdentifiers: ', catchmentIdentifiers, 'catchmentGeoms: ', catchmentGeoms)
+    
     m = MultiPolygon(catchmentGeoms)
     catchmentGeoms = m 
+
+    # Remove duplicates from list of catchment IDs
+    catchmentIdentifiers = [x for x in catchmentIdentifiers if catchmentIdentifiers.count(x) == 1]
+
     
     return catchmentIdentifiers, catchmentGeoms
 # return catchmentIdentifiers, catchmentGeoms
@@ -105,13 +116,13 @@ def get_local_flowlines(catchmentIdentifiers, dist):
     print('# of catchment IDs:', len(catchmentIdentifiers))
     nhdGeom = []
 
-    for i in range(0, len(catchmentIdentifiers), 100):
-        chunk = catchmentIdentifiers[i:i + 100]
+    # Request catchments 100 or less at a time
+    for i in range(0, len(catchmentIdentifiers), 101):
+        chunk = catchmentIdentifiers[i:i + 101]
+        print('chunk:', chunk)
                 
         catchmentids = tuple(chunk)
 
-        # catchmentIdentifiers = tuple(catchmentIdentifiers)
-        
         cql_filter = f"comid IN {catchmentids}" 
         
         payload = {
@@ -127,10 +138,11 @@ def get_local_flowlines(catchmentIdentifiers, dist):
 
         # Try to request flowlines geometry from catchment ID from NLDI geoserver
         try:
-            r = get(NLDI_GEOSERVER_URL, params=payload)
+            r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+            print('r.url:', r.url)
             # Convert response to json
             flowlines = r.json()
-
+            # print('flowlines:', flowlines)
         # If request fails or can't be converted to json, something's up
         except:
             if r.status_code == 200:
@@ -168,7 +180,7 @@ def get_local_flowlines(catchmentIdentifiers, dist):
         for id in outlets:
             # request downstream flowlines geometry NLDI
             try:
-                r = get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
+                r = requests.get(NLDI_URL  + str(id) + '/navigation/DM/flowlines', params=payload)
                 # print('r.url:', r.url)
                 downstreamflowlines = r.json()
                 for feature in downstreamflowlines['features']:

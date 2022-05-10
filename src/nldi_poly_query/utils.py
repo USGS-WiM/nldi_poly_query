@@ -1,31 +1,43 @@
 import json
 import requests
+import shapely.geometry
 from shapely.geometry import mapping, MultiLineString, Polygon, MultiPolygon
-from shapely.ops import transform
-import sys, random
+import sys
+import numpy as np
 
 # arguments
 NLDI_URL = 'https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/'
 NLDI_GEOSERVER_URL = 'https://labs.waterdata.usgs.gov/geoserver/wmadata/ows'
+verbose = False
 
 
 # functions
-def geom_to_geojson(geom):
+def geom_to_geojson(geom: shapely.geometry) -> dict:
     """Return a geojson from an OGR geom object"""
 
     geojson_dict = mapping(geom)
 
     return geojson_dict
-# return geojson_dict
 
 
-def transform_geom(proj, geom):
-    """Transform geometry"""
+def parse_input(data: json) -> list:
+    # Extract the individual polygons from the input geojson file
+    coords = []   # This will be a list of polygons
+    for d in data['features']:
+        if d['geometry']['type'] == 'Polygon':              # If it is a polygon
+            if len(d['geometry']['coordinates']) == 1:      # Confirm that it is a polygon
+                rounded_coords = list(np.around(np.array(d['geometry']['coordinates']),4))
+                coords.append(rounded_coords) # And add it to the list of polygons
+            if len(d['geometry']['coordinates']) > 1:       # If its actually a multipolygon
+                for c in d['geometry']['coordinates']:      # Loop thru it
+                    rounded_coords = list(np.around(np.array(c),4))
+                    coords.append(rounded_coords)           # And add each polygon (as a list) tp the list
+        if d['geometry']['type'] == 'MultiPolygon':         # If its a multipolygon
+            for e in d['geometry']['coordinates']:          # Loop thru it 
+                rounded_coords = list(np.around(np.array(e),4))
+                coords.append(rounded_coords)               # And add it to the list of polygons
 
-    projected_geom = transform(proj, geom)
-
-    return projected_geom
-# return projected_geom
+    return coords
 
 
 def get_local_catchments(coords):
@@ -47,7 +59,8 @@ def get_local_catchments(coords):
         poly = Polygon(coords)
     
     cql_filter = f"INTERSECTS(the_geom, {poly.wkt})"
-    print('requesting local catchments...')     
+    if verbose:
+        print('requesting local catchments...')     
 
     payload = {
         'service': 'wfs',
@@ -62,9 +75,10 @@ def get_local_catchments(coords):
     # Try to request catchment geometry from polygon query from NLDI geoserver
     try:
         r = requests.get(NLDI_GEOSERVER_URL, params=payload)
+        print('url: ', r.url)
         # Convert response to json
         resp = r.json()
-
+        
     # If request fails or can't be converted to json, something's up
     except:
         if r.status_code == 200:
@@ -77,7 +91,8 @@ def get_local_catchments(coords):
         sys.exit(1)
 
     features = resp['features']
-    print('# of catchments', len(features)) 
+    if verbose:
+        print('# of catchments', len(features)) 
 
     x = 0
     catchmentIdentifiers = []
@@ -87,13 +102,15 @@ def get_local_catchments(coords):
         if len(features[x]["geometry"]['coordinates']) > 1:    # If the catchment is multipoly (I know this is SUPER annoying)
             r = 0
             while r < len(features[x]["geometry"]['coordinates']):
-                print('Multipolygon catchment found:', json.dumps(features[x]['properties']['featureid']))
+                if verbose:
+                    print('Multipolygon catchment found:', json.dumps(features[x]['properties']['featureid']))
                 catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][r][0]))
                 r += 1
         else:       # Else, the catchment is a single polygon (as it should be)
             catchmentGeoms.append(Polygon(features[x]["geometry"]['coordinates'][0][0]))
         x += 1
-    print('# of catchment geoms:', x )
+    if verbose:
+        print('# of catchment geoms:', x )
     
     m = MultiPolygon(catchmentGeoms)
     catchmentGeoms = m 
@@ -109,7 +126,6 @@ def get_local_catchments(coords):
 def get_local_flowlines(catchmentIdentifiers, dist):
     """Request NDH Flowlines from NLDI with Catchment ID"""
 
-    print('# of catchment IDs:', len(catchmentIdentifiers))
     nhdGeom = []
     fromnode_list = []
     tonode_list = {}
@@ -150,7 +166,8 @@ def get_local_flowlines(catchmentIdentifiers, dist):
             # Kill program if request fails.
             sys.exit(1)
 
-        print('got flowlines')
+        if verbose:
+            print('got flowlines')
 
         for feature in flowlines['features']:
             # Get from and to nodes
@@ -188,32 +205,12 @@ def get_local_flowlines(catchmentIdentifiers, dist):
 
 
         flowlinesGeom = MultiLineString(nhdGeom)
-        print('got trace downstream flowline')
+        if verbose:
+            print('got trace downstream flowline')
 
     return flowlines, downstreamflowlines, flowlinesGeom
     
 # return flowlines, downstreamflowlines, flowlinesGeom
-
-
-def merge_geometry(catchment, splitCatchment, upstreamBasin):
-    """Attempt at merging geometries"""
-
-    print('merging geometries...')
-    d = 0.00045
-    # d2 = 0.00015 # distance
-    cf = 1.3  # cofactor
-
-    splitCatchment = splitCatchment.simplify(d)
-
-    diff = catchment.difference(splitCatchment).buffer(-d).buffer(d*cf).simplify(d)
-    mergedCatchmentGeom = upstreamBasin.difference(diff).buffer(-d).buffer(d*cf).simplify(d)
-
-    # mergedCatchmentGeom = upstreamBasin.union(splitCatchment).buffer(-d).buffer(d*cf).simplify(d)
-
-    print('finished merging geometries')
-
-    return mergedCatchmentGeom
-# return mergedCatchmentGeom
 
 
 def find_out_flowline(tonode_list, fromnode_list):

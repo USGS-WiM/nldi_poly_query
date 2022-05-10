@@ -1,7 +1,7 @@
-from unittest import skip
-from .utils import geom_to_geojson, get_local_catchments, get_local_flowlines
+from .utils import geom_to_geojson, parse_input, get_local_catchments, get_local_flowlines
 from geojson import Feature, FeatureCollection
 from shapely.geometry import MultiPolygon
+
 
 class Poly_Query:
 
@@ -36,18 +36,7 @@ class Poly_Query:
     def run(self):
         print('Running poly_query.py')
 
-        # Extract the individual polygons from the input geojson file
-        coords = []   # This will be a list of polygons
-        for d in self.data['features']:
-            if d['geometry']['type'] == 'Polygon':              # If its a polygon
-                if len(d['geometry']['coordinates']) == 1:      # Confirm that it is a polygon
-                    coords.append(d['geometry']['coordinates']) # And add it to the list of polygons
-                if len(d['geometry']['coordinates']) > 1:       # If its actually a multipolygon
-                    for c in d['geometry']['coordinates']:      # Loop thru it
-                        coords.append([c])                      # And add each polygon (as a list) tp the list
-            if d['geometry']['type'] == 'MultiPolygon':         # If its a multipolygon
-                for e in d['geometry']['coordinates']:          # Loop thru it 
-                    coords.append(e)                            # And add it to the list of polygons
+        coords = parse_input(self.data)
 
         #################### Get the catchments that are overlapped by the polygon ########################       
         # If there is only one polygon to query

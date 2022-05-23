@@ -26,15 +26,15 @@ def parse_input(data: json) -> list:
     for d in data['features']:
         if d['geometry']['type'] == 'Polygon':              # If it is a polygon
             if len(d['geometry']['coordinates']) == 1:      # Confirm that it is a polygon
-                rounded_coords = list(np.around(np.array(d['geometry']['coordinates']),4))
+                rounded_coords = list(np.round_(np.array(d['geometry']['coordinates']),decimals=4))
                 coords.append(rounded_coords) # And add it to the list of polygons
-            if len(d['geometry']['coordinates']) > 1:       # If its actually a multipolygon
+            if len(d['geometry']['coordinates']) > 1:       # If the polygon is actually a multipolygon
                 for c in d['geometry']['coordinates']:      # Loop thru it
-                    rounded_coords = list(np.around(np.array(c),4))
-                    coords.append(rounded_coords)           # And add each polygon (as a list) tp the list
-        if d['geometry']['type'] == 'MultiPolygon':         # If its a multipolygon
+                    rounded_coords = np.round_(np.array(c),decimals=4)
+                    coords.append([rounded_coords])           # And add each polygon (as a list) tp the list
+        if d['geometry']['type'] == 'MultiPolygon':         # If it is a multipolygon
             for e in d['geometry']['coordinates']:          # Loop thru it 
-                rounded_coords = list(np.around(np.array(e),4))
+                rounded_coords = list(np.round_(np.array(e),decimals=4))
                 coords.append(rounded_coords)               # And add it to the list of polygons
 
     return coords
@@ -46,8 +46,10 @@ def get_local_catchments(coords):
     ## If there are more than 237 points, the catchment query will not work
     # Convert coords to shapely geom
     if len(coords) > 237:
-        poly = Polygon(coords).buffer(0)
+        poly = Polygon(coords)
         i = 0.000001
+        if poly.geom_type == 'MultiPolygon':        
+            print(coords, len(coords), type(coords))
         while len(poly.exterior.coords) > 235:
             poly = poly.simplify(i, preserve_topology=True)
             i += 0.000001
@@ -75,7 +77,6 @@ def get_local_catchments(coords):
     # Try to request catchment geometry from polygon query from NLDI geoserver
     try:
         r = requests.get(NLDI_GEOSERVER_URL, params=payload)
-        print('url: ', r.url)
         # Convert response to json
         resp = r.json()
         
@@ -120,7 +121,6 @@ def get_local_catchments(coords):
 
     
     return catchmentIdentifiers, catchmentGeoms
-# return catchmentIdentifiers, catchmentGeoms
 
 
 def get_local_flowlines(catchmentIdentifiers, dist):
@@ -131,12 +131,15 @@ def get_local_flowlines(catchmentIdentifiers, dist):
     tonode_list = {}
 
     # Request catchments 100 or less at a time
-    for i in range(0, len(catchmentIdentifiers), 101):
-        chunk = catchmentIdentifiers[i:i + 101]
+    for i in range(0, len(catchmentIdentifiers), 100):
+        chunk = catchmentIdentifiers[i:i + 100]
                 
         catchmentids = tuple(chunk)
 
         cql_filter = f"comid IN {catchmentids}" 
+        # If there is only one feature
+        if len(catchmentIdentifiers) == 1:
+            cql_filter = f"comid IN ({catchmentIdentifiers})"
         
         payload = {
             'service': 'wfs',
@@ -148,7 +151,6 @@ def get_local_flowlines(catchmentIdentifiers, dist):
             'srsName': 'EPSG:4326',
             'CQL_FILTER': cql_filter
         }
-
         # Try to request flowlines geometry from catchment ID from NLDI geoserver
         try:
             r = requests.get(NLDI_GEOSERVER_URL, params=payload)
@@ -158,7 +160,7 @@ def get_local_flowlines(catchmentIdentifiers, dist):
         # If request fails or can't be converted to json, something's up
         except:
             if r.status_code == 200:
-                print('Get local flowlines request failed. Check to make sure query was submitted with lon, lat coords. Quiting nldi_flowtools query.')
+                print('Get local flowlines request failed with status code 200. Quiting nldi_flowtools query.')
 
             else:
                 print('Quiting nldi_flowtools query. Error requesting flowlines from Geoserver:', r.exceptions.HTTPError)
@@ -210,7 +212,6 @@ def get_local_flowlines(catchmentIdentifiers, dist):
 
     return flowlines, downstreamflowlines, flowlinesGeom
     
-# return flowlines, downstreamflowlines, flowlinesGeom
 
 
 def find_out_flowline(tonode_list, fromnode_list):
